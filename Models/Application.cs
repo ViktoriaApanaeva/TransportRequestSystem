@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Reflection;
 
 namespace TransportRequestSystem.Models
 {
@@ -108,7 +109,7 @@ namespace TransportRequestSystem.Models
 
         public static string GenerateNumber()
         {
-            return $"Z-{DateTime.Now:yyyyMMdd}-{new Random().Next(1000, 9999)}";
+            return $"{DateTime.Now:yyyyMMdd}-{new Random().Next(1000, 9999)}";
         }
     }
 
@@ -128,9 +129,6 @@ namespace TransportRequestSystem.Models
 
         [Display(Name = "Создана/Изменена")]
         CreatedOrModified,
-
-        [Display(Name = "Не утверждена")]
-        NotApproved,
 
         [Display(Name = "Не исполнена")]
         NotCompleted,

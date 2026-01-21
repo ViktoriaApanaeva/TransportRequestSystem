@@ -1,8 +1,8 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
@@ -18,66 +18,63 @@ namespace TransportRequestSystem.Controllers
             _context = context;
         }
 
+        // Главная страница с фильтрами
         public async Task<IActionResult> Index(ApplicationFilter filter)
         {
             var query = _context.Applications
+                .Include(a => a.StatusHistory)
                 .Where(a => a.Status != ApplicationStatus.Deleted)
                 .AsQueryable();
 
+            // Фильтры
             if (filter.DateFrom.HasValue)
-            {
-                query = query.Where(a => a.ApplicationDate >= filter.DateFrom.Value);
-            }
-            if (filter.DateTo.HasValue)
-            {
-                query = query.Where(a => a.ApplicationDate <= filter.DateTo.Value);
-            }
-            if (!string.IsNullOrEmpty(filter.OrganizationUnit))
-            {
-                query = query.Where(a => a.OrganizationUnit.Contains(filter.OrganizationUnit));
-            }
-            if (filter.SelectedStatuses != null && filter.SelectedStatuses.Any())
-            {
-                query = query.Where(a => filter.SelectedStatuses.Contains(a.Status));
-            }
-            var applications = await query
-                .OrderByDescending(a => a.CreatedAt)
-                .ToListAsync();
+                query = query.Where(a => a.ApplicationDate >= filter.DateFrom);
 
-            ViewBag.Filter = filter;
+            if (filter.DateTo.HasValue)
+                query = query.Where(a => a.ApplicationDate <= filter.DateTo);
+
+            if (!string.IsNullOrEmpty(filter.OrganizationUnit))
+                query = query.Where(a => a.OrganizationUnit.Contains(filter.OrganizationUnit));
+
+            if (filter.SelectedStatuses != null && filter.SelectedStatuses.Any())
+                query = query.Where(a => filter.SelectedStatuses.Contains(a.Status));
+
+            var applications = await query.OrderByDescending(a => a.CreatedAt).ToListAsync();
+
+            ViewBag.Filter = filter ?? new ApplicationFilter();
             return View(applications);
         }
 
+        // Создание заявки (GET)
         public IActionResult Create()
         {
-            var application = new Models.Application
+            return View(new Application
             {
                 Number = Application.GenerateNumber(),
-            };
-            return View(application);
+                Status = ApplicationStatus.CreatedOrModified,
+                ApplicationDate = DateTime.Today
+            });
         }
 
+        // Создание заявки (POST)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Models.Application application)
+        public async Task<IActionResult> Create(Application application)
         {
             if (ModelState.IsValid)
             {
-                application.Number = Models.Application.GenerateNumber();
                 application.CreatedAt = DateTime.Now;
-                application.Status = ApplicationStatus.CreatedOrModified;
-
                 _context.Add(application);
                 await _context.SaveChangesAsync();
-                 
-                // Создаем запись в истории статусов
-                await CreateStatusHistory(application.Id, null, application.Status.ToString(),
-                    User.Identity?.Name ?? "System", "Создание заявки");
 
+                TempData["Success"] = "Заявка успешно создана!";
                 return RedirectToAction(nameof(Index));
             }
+
             return View(application);
         }
+
+        // Редактирование заявки (GET)
         public async Task<IActionResult> Edit(int id)
         {
             var application = await _context.Applications
@@ -85,153 +82,100 @@ namespace TransportRequestSystem.Controllers
                 .FirstOrDefaultAsync(a => a.Id == id);
 
             if (application == null)
-            {
                 return NotFound();
-            }
 
             return View(application);
         }
 
+        // Редактирование заявки (POST)
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Models.Application application)
+        public async Task<IActionResult> Edit(int id, Application application)
         {
             if (id != application.Id)
-            {
                 return NotFound();
-            }
 
             if (ModelState.IsValid)
             {
-                try
+                var oldApp = await _context.Applications.FindAsync(id);
+                if (oldApp == null)
+                    return NotFound();
+
+                var oldStatus = oldApp.Status;
+
+                // Сохраняем неизменяемые поля
+                application.CreatedAt = oldApp.CreatedAt;
+                application.Number = oldApp.Number;
+                application.UpdatedAt = DateTime.Now;
+
+                _context.Entry(oldApp).CurrentValues.SetValues(application);
+
+                // История изменений статуса
+                if (oldStatus != application.Status)
                 {
-                    var oldStatus = await _context.Applications
-                        .Where(a => a.Id == id)
-                        .Select(a => a.Status)
-                        .FirstOrDefaultAsync();
-
-                    application.UpdatedAt = DateTime.Now;
-                    _context.Update(application);
-
-                    // Если статус изменился, добавляем запись в историю
-                    if (oldStatus != application.Status)
-                    {
-                        await CreateStatusHistory(id, oldStatus.ToString(),
-                            application.Status.ToString(),
-                            User.Identity?.Name ?? "System",
-                            "Редактирование заявки");
-                    }
-
-                    await _context.SaveChangesAsync();
+                    await AddStatusHistory(id, oldStatus.ToString(),
+                        application.Status.ToString(), "Система");
                 }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!ApplicationExists(application.Id))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
+
+                await _context.SaveChangesAsync();
+                TempData["Success"] = "Заявка обновлена!";
                 return RedirectToAction(nameof(Index));
             }
+
             return View(application);
         }
 
+        // Удаление заявки
         [HttpPost]
-        [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(int id)
         {
             var application = await _context.Applications.FindAsync(id);
-            if (application != null)
-            {
-                application.Status = ApplicationStatus.Deleted;
-                application.UpdatedAt = DateTime.Now;
+            if (application == null)
+                return NotFound();
 
-                await CreateStatusHistory(id, application.Status.ToString(),
-                    ApplicationStatus.Deleted.ToString(),
-                    User.Identity?.Name ?? "System",
-                    "Удаление заявки");
+            var oldStatus = application.Status.ToString();
+            application.Status = ApplicationStatus.Deleted;
+            application.UpdatedAt = DateTime.Now;
 
-                await _context.SaveChangesAsync();
-            }
+            await AddStatusHistory(id, oldStatus, "Удалена", "Система");
+            await _context.SaveChangesAsync();
+
+            TempData["Success"] = "Заявка удалена!";
             return RedirectToAction(nameof(Index));
         }
 
+        // Изменение статуса
         [HttpPost]
-        public async Task<IActionResult> Approve(int id)
-        {
-            return await ChangeStatus(id, ApplicationStatus.Approved, "Утвердить");
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Reject(int id)
-        {
-            return await ChangeStatus(id, ApplicationStatus.RejectedByDirector, "Отклонение заявки руководителем");
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> AssignVehicle(int id)
-        {
-            return await ChangeStatus(id, ApplicationStatus.AssignedToVehicle, "Назначение ТС");
-        }
-
-        [HttpPost]
-        public async Task<IActionResult> Complete(int id)
-        {
-            return await ChangeStatus(id, ApplicationStatus.Completed, "Исполнение");
-        }
-
-        private async Task<IActionResult> ChangeStatus(int id, ApplicationStatus newStatus, string comment)
+        public async Task<IActionResult> ChangeStatus(int id, ApplicationStatus status)
         {
             var application = await _context.Applications.FindAsync(id);
             if (application == null)
-            {
                 return NotFound();
-            }
 
             var oldStatus = application.Status;
-            application.Status = newStatus;
+            application.Status = status;
             application.UpdatedAt = DateTime.Now;
 
-            await CreateStatusHistory(id, oldStatus.ToString(), newStatus.ToString(),
-                User.Identity?.Name ?? "System", comment);
-
+            await AddStatusHistory(id, oldStatus.ToString(), status.ToString(), "Система");
             await _context.SaveChangesAsync();
 
+            TempData["Success"] = "Статус изменен!";
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        private async Task CreateStatusHistory(int applicationId, string? oldStatus,
-            string newStatus, string changedBy, string comment)
+        // Вспомогательный метод для истории статусов
+        private async Task AddStatusHistory(int appId, string oldStatus, string newStatus, string changedBy)
         {
             var history = new StatusHistory
             {
-                ApplicationId = applicationId,
-                OldStatus = oldStatus ?? "Не установлен",
+                ApplicationId = appId,
+                OldStatus = oldStatus,
                 NewStatus = newStatus,
                 ChangedBy = changedBy,
-                Comment = comment,
                 ChangedDate = DateTime.Now
             };
 
             _context.StatusHistory.Add(history);
         }
-
-        private bool ApplicationExists(int id)
-        {
-            return _context.Applications.Any(e => e.Id == id);
-        }
-    }
-
-    public class DashboardViewModel
-    {
-        public int TotalApplications { get; set; }
-        public int TodayApplications { get; set; }
-        public int PendingApplications { get; set; }
-        public int UrgentApplications { get; set; }
-        public List<Models.Application> RecentApplications { get; set; } = new();
     }
 }
