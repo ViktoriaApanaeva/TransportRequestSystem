@@ -5,176 +5,199 @@
     ViewData["Title"] = "Управление заявками";
     var filter = ViewBag.Filter as ApplicationFilter ?? new ApplicationFilter();
 }
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 
-<nav class="d-flex justify-content-center align-items-center vw-100">
-    <div class="d-flex gap-5">
-        <button class="btn btn-primary" style="width: 190px; height: 40px;">
-            Управление заявками
-        </button>
-        <button class="btn btn-outline-primary" style="width: 190px; height: 40px;">
-            Ежедневная сводка
-        </button>
-        <button class="btn btn-outline-primary" style="width: 190px; height: 40px;">
-            Подать заявку
-        </button>
-        <button class="btn btn-outline-primary" style="width: 190px; height: 40px;">
-            Перечень заявок
-        </button>
-    </div>
-</nav>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="~/css/applications.css" asp-append-version="true" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Навбар -->
+    <nav class="navbar-custom">
+        <div class="container d-flex justify-content-center">
+                <a href="#" class="nav-btn">
+                    Управление заявками
+                </a>
+                <a href="/daily" class="nav-btn">
+                    Ежедневная сводка
+                </a>
+                <a href="/create" class="nav-btn">
+                    Подать заявку
+                </a>
+                <a href="#" class="nav-btn">
+                    Перечень заявок
+                </a> 
+        </div>
+    </nav>
 
-<div class="container-fluid">
-    <!-- Заголовок и кнопки -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Управление заявками</h1>
-        <div class="d-flex gap-2">
-            <!-- Поиск -->
-            <div class="input-group" style="width: 250px;">
-                <input type="text" class="form-control" placeholder="Поиск..." id="searchInput">
-                <button class="btn btn-outline-primary" type="button" id="searchButton">
-                    Поиск
-                </button>
+    <!-- Основной контент -->
+    <div class="container mt-4">
+        <!-- Заголовок и кнопки -->
+        <div class="main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>Управление заявками</h1>
+                <div class="d-flex gap-2">
+                    <!-- Поиск -->
+                    <div class="input-group" style="width: 300px; height: 40px;">
+                        <input type="text" class="form-control" placeholder="Поиск..." id="searchInput">
+                        <button class="btn searchButton" type="button" id="searchButton">
+                            Поиск
+                        </button>
+                    </div>
+
+                    <!-- Кнопка создания -->
+                    <a asp-action="Create" class="btn btn-base">
+                        Создать заявку
+                    </a>
+                </div>
             </div>
 
-            <!-- Кнопка создания -->
-            <a asp-action="Create" class="btn btn-primary">
-                 Создать заявку
-            </a>
-        </div>
-    </div>
-
-    <!-- Фильтры -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <form method="get" asp-action="Index">
-                <div class="row">
-                    <!-- Дата -->
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">Дата</label>
-                        <div class="d-flex gap-2">
-                            <input type="date" name="DateFrom" class="form-control"
-                                   value="@(filter.DateFrom?.ToString("yyyy-MM-dd"))">
-                            <input type="date" name="DateTo" class="form-control"
-                                   value="@(filter.DateTo?.ToString("yyyy-MM-dd"))">
-                        </div>
-                    </div>
-
-                    <!-- Организация -->
-                    <div class="col-md-3 mb-3">
-                        <label class="form-label">Организация</label>
-                        <input type="text" name="OrganizationUnit" class="form-control"
-                               value="@filter.OrganizationUnit">
-                    </div>
-
-                    <!-- Кнопки -->
-                    <div class="col-md-6 mb-3 d-flex align-items-end gap-2">
-                        <button type="submit" class="btn btn-primary">Обновить</button>
-                        <a asp-action="Index" class="btn btn-secondary">Сбросить</a>
-                    </div>
-                </div>
-
-                <!-- Чекбоксы статусов -->
-                <div class="row mt-3">
-                    <div class="col-12">
-                        <label class="form-label fw-bold">Статусы:</label>
+            <!-- Фильтры -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="get" asp-action="Index">
                         <div class="row">
-                            @{
-                                var allStatuses = Enum.GetValues<ApplicationStatus>();
-                                var groups = allStatuses.Chunk(3).ToList();
-                            }
+                            <!-- Дата -->
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Дата</label>
+                                <div class="mb-3">
+                                    <input type="date" name="DateFrom" class="form-control"
+                                           value="@(filter.DateFrom?.ToString("yyyy-MM-dd"))">
+                                    <input type="date" name="DateTo" class="form-control"
+                                           value="@(filter.DateTo?.ToString("yyyy-MM-dd"))">
+                                </div>
+                            </div>
 
-                            @foreach (var group in groups)
-                            {
-                                <div class="col-md-4">
-                                    @foreach (var status in group)
+                            <!-- Организация -->
+                            <div class="col-md-3 mb-3">
+                                <label class="form-label">Организация</label>
+                                <input type="text" name="OrganizationUnit" class="form-control"
+                                       value="@filter.OrganizationUnit">
+                            </div>
+
+                            <!-- Кнопки -->
+                            <div class="col-md-6 mb-3 d-flex align-items-end gap-2">
+                                <button type="submit" class="btn btn-base">Обновить</button>
+                                <a asp-action="Index" class="btn btn-base" style="background-color:grey; ">Сбросить</a>
+                            </div>
+                        </div>
+
+                        <!-- Чекбоксы статусов -->
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Статусы:</label>
+                                <div class="row">
+                                    @{
+                                        var allStatuses = Enum.GetValues<ApplicationStatus>();
+                                        var groups = allStatuses.Chunk(3).ToList();
+                                    }
+
+                                    @foreach (var group in groups)
                                     {
-                                        var displayName = GetDisplayName(status);
-                                        var isChecked = filter.SelectedStatuses?.Contains(status) ?? true;
+                                        <div class="col-md-4">
+                                            @foreach (var status in group)
+                                            {
+                                                var displayName = GetDisplayName(status);
+                                                var isChecked = filter.SelectedStatuses?.Contains(status) ?? true;
 
-                                        <div class="form-check">
-                                            <input class="form-check-input" type="checkbox"
-                                                   name="SelectedStatuses" value="@status"
-                                                   id="status_@status" @(isChecked ? "checked" : "")>
-                                            <label class="form-check-label" for="status_@status">
-                                                @displayName
-                                            </label>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox"
+                                                           name="SelectedStatuses" value="@status"
+                                                           id="status_@status" @(isChecked ? "checked" : "")>
+                                                    <label class="form-check-label" for="status_@status">
+                                                        @displayName
+                                                    </label>
+                                                </div>
+                                            }
                                         </div>
                                     }
                                 </div>
-                            }
+                            </div>
                         </div>
-                    </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
+        <!-- Таблица -->
+        @if (Model.Any())
+        {
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Дата</th>
+                            <th>Организация</th>
+                            <th>Ответственный</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var app in Model)
+                        {
+                            var statusName = GetDisplayName(app.Status);
+
+                            <tr>
+                                <td>@app.Number</td>
+                                <td>@app.ApplicationDate.ToString("dd.MM.yyyy")</td>
+                                <td>@app.OrganizationUnit</td>
+                                <td>@app.ResponsiblePerson</td>
+                                <td>
+                                    <span class="badge
+                                                @(app.Status == ApplicationStatus.Approved || app.Status == ApplicationStatus.Completed ? "bg-success" :
+                                                                                    app.Status == ApplicationStatus.InProgress ? "bg-primary" :
+                                                                                    app.Status.ToString().Contains("Отклонена") ? "bg-danger" :
+                                                                                    "bg-secondary")">
+                                @statusName
+                            </span>
+                        </td>
+                        <td>
+                            <a asp-action="Edit" asp-route-id="@app.Id" class="btn btn-sm btn-outline-primary">
+                                Редактировать
+                            </a>
+                        </td>
+                    </tr>
+                                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-info">
+                Заявок не найдено. <a asp-action="Create">Создайте первую</a>.
+            </div>
+        }
     </div>
 
-    <!-- Таблица -->
-    @if (Model.Any())
-    {
-        <table class="table table-hover">
-            <thead>
-                <tr>
-                    <th>№</th>
-                    <th>Дата</th>
-                    <th>Организация</th>
-                    <th>Ответственный</th>
-                    <th>Статус</th>
-                    <th>Действия</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var app in Model)
-                {
-                    var statusName = GetDisplayName(app.Status);
+    <environment include="Development">
+        <script src="https://localhost:5149/_framework/aspnetcore-browser-refresh.js"></script>
+    </environment>
 
-                    <tr>
-                        <td>@app.Number</td>
-                        <td>@app.ApplicationDate.ToString("dd.MM.yyyy")</td>
-                        <td>@app.OrganizationUnit</td>
-                        <td>@app.ResponsiblePerson</td>
-                        <td>
-                            <span class="badge
-                                        @(app.Status == ApplicationStatus.Approved || app.Status == ApplicationStatus.Completed ? "bg-success" :
-                                                                    app.Status == ApplicationStatus.InProgress ? "bg-primary" :
-                                                                    app.Status.ToString().Contains("Отклонена") ? "bg-danger" :
-                                                                    "bg-secondary")">
-                        @statusName
-                    </span>
-                </td>
-                <td>
-                    <a asp-action="Edit" asp-route-id="@app.Id" class="btn btn-sm btn-outline-primary">
-                        Редактировать
-                    </a>
-                </td>
-            </tr>
-                        }
-            </tbody>
-        </table>
+    @section Scripts {
+        <script>
+            document.getElementById('searchButton').onclick = function() {
+                var search = document.getElementById('searchInput').value.toLowerCase();
+                var rows = document.querySelectorAll('tbody tr');
+
+                rows.forEach(function(row) {
+                    var text = row.textContent.toLowerCase();
+                    row.style.display = text.includes(search) ? '' : 'none';
+                });
+            };
+        </script>
     }
-    else
-    {
-        <div class="alert alert-info">
-            Заявок не найдено. <a asp-action="Create">Создайте первую</a>.
-        </div>
-    }
-</div>
+</body>
+</html>
 
-@section Scripts {
-    <script>
-        // Простой поиск
-        document.getElementById('searchButton').onclick = function() {
-            var search = document.getElementById('searchInput').value.toLowerCase();
-            var rows = document.querySelectorAll('tbody tr');
-
-            rows.forEach(function(row) {
-                var text = row.textContent.toLowerCase();
-                row.style.display = text.includes(search) ? '' : 'none';
-            });
-        };
-    </script>
-}
 
 @functions {
     public string GetDisplayName(ApplicationStatus status)
