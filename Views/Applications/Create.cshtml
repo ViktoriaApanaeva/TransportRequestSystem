@@ -1,5 +1,6 @@
 ﻿@using TransportRequestSystem.Models
-@model Application
+@using TransportRequestSystem.Pages.Applications
+@model TransportRequestSystem.Pages.Applications.CreateModel
 @{
     ViewData["Title"] = "Создание заявки";
 }
@@ -7,13 +8,14 @@
 <div class="container-fluid">
     <h1 class="mb-4">СОЗДАНИЕ ЗАЯВКИ</h1>
 
-    <form asp-action="Create" method="post">
+    <form asp-action="Create" method="post"
+          @Html.AntiForgeryToken()>
         <!-- Статус -->
         <div class="mb-4">
             <h5 class="mb-3">Статус заявки</h5>
-            <select asp-for="Status" class="form-control" disabled>
-                <option value="@Model.Status">@Model.Status</option>
-            </select>
+            @* <select asp-for="Status" class="form-control" disabled>
+                <option value="@CreateModel.Status">@CreateModel.Status</option>
+            </select> *@
         </div>
 
         <!-- Заказчик -->

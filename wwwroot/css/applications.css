@@ -20,7 +20,12 @@ nav {
     justify-content: center;
     text-decoration: none;
     transition: all 0.3s;
-    background-color: #FFF3DB;
+    background-color: white;
+}
+
+.nav-btn:focus {
+    transform: translateY(2px) !important; 
+    border: 2px solid rgba(192, 156, 106, 1) !important;
 }
 .main-content {
     width: 90%;
@@ -44,11 +49,20 @@ h1 {
     text-decoration: none;
     background-color: #008EB9;
 }
+.btn:active {
+    border: 2px solid rgba(192, 156, 106, 1) !important;
+    background-color: white !important;
+}
 
 .searchButton {
-    width:80px;
+    width: 80px;
     border-radius: 10px;
     color: white;
     font-weight: 450;
     background-color: #008EB9;
+}
+
+.card {
+    background-color: #FFF3DB;
+    border: 2px solid rgba(192, 156, 106, 1);
 }

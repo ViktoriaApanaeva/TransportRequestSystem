@@ -157,6 +157,6 @@ namespace TransportRequestSystem.Models
         public string? OrganizationUnit { get; set; }
 
         [Display(Name = "Статусы")]
-        public List<ApplicationStatus> SelectedStatuses { get; set; } = new();
+        public List<ApplicationStatus> SelectedStatuses { get; set; } = new List<ApplicationStatus>();
     }
 }

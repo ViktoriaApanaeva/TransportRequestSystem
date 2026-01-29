@@ -6,21 +6,35 @@ using System.Reflection;
 using System.Threading.Tasks;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
+using TransportRequestSystem.Pages.Applications;
 
 namespace TransportRequestSystem.Controllers
 {
     public class ApplicationsController : Controller
     {
         private readonly ApplicationDbContext _context;
+        private readonly CreateModel _createModel;
 
-        public ApplicationsController(ApplicationDbContext context)
+        public ApplicationsController(ApplicationDbContext context, CreateModel createModel)
         {
             _context = context;
+            _createModel = createModel;
         }
 
+        public CreateModel CreateModal { get; set; }
         // Главная страница с фильтрами
-        public async Task<IActionResult> Index(ApplicationFilter filter)
+        public async Task<IActionResult> Index(ApplicationFilter filter, bool selectAll = false, bool reset = false)
         {
+            if (reset)
+            {
+                return RedirectToAction(nameof(Index));
+            }
+
+            if (selectAll)
+            {
+                filter.SelectedStatuses = Enum.GetValues<ApplicationStatus>().ToList();
+            }
+
             var query = _context.Applications
                 .Include(a => a.StatusHistory)
                 .Where(a => a.Status != ApplicationStatus.Deleted)
@@ -177,5 +191,6 @@ namespace TransportRequestSystem.Controllers
 
             _context.StatusHistory.Add(history);
         }
+
     }
 }

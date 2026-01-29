@@ -53,9 +53,12 @@
                     </div>
 
                     <!-- Кнопка создания -->
-                    <a asp-action="Create" class="btn btn-base">
-                        Создать заявку
-                    </a>
+                    <button type="button"
+                            class="btn btn-success"
+                            data-bs-toggle="modal"
+                            data-bs-target="#createModal">
+                        <i class="bi bi-plus-circle"></i> Создать заявку
+                    </button>
                 </div>
             </div>
 
@@ -65,10 +68,10 @@
                     <form method="get" asp-action="Index">
                         <div class="row">
                             <!-- Дата -->
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">Дата</label>
                                 <div class="mb-3">
-                                    <input type="date" name="DateFrom" class="form-control"
+                                    <input type="date" name="DateFrom" class="form-control mb-3"
                                            value="@(filter.DateFrom?.ToString("yyyy-MM-dd"))">
                                     <input type="date" name="DateTo" class="form-control"
                                            value="@(filter.DateTo?.ToString("yyyy-MM-dd"))">
@@ -76,7 +79,7 @@
                             </div>
 
                             <!-- Организация -->
-                            <div class="col-md-3 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">Организация</label>
                                 <input type="text" name="OrganizationUnit" class="form-control"
                                        value="@filter.OrganizationUnit">
@@ -85,14 +88,30 @@
                             <!-- Кнопки -->
                             <div class="col-md-6 mb-3 d-flex align-items-end gap-2">
                                 <button type="submit" class="btn btn-base">Обновить</button>
-                                <a asp-action="Index" class="btn btn-base" style="background-color:grey; ">Сбросить</a>
+                                <button type="submit"
+                                        name="reset"
+                                        value="true"
+                                        class="btn btn-base"
+                                        style="background-color:grey;">
+                                    Сбросить
+                                </button>
                             </div>
                         </div>
 
                         <!-- Чекбоксы статусов -->
                         <div class="row mt-3">
                             <div class="col-12">
-                                <label class="form-label fw-bold">Статусы:</label>
+                                <div class="d-flex align-items-baseline mb-2">
+                                    <label class="form-label fw-bold" style="width:fit-content;">Статус</label>
+                                    <button type="submit"
+                                            name="selectAll"
+                                            value="true"
+                                            class="btn btn-base ms-4"
+                                            style="width:70px !important; height: 30px !important;">
+                                        Все
+                                    </button>
+                                </div>
+                                
                                 <div class="row">
                                     @{
                                         var allStatuses = Enum.GetValues<ApplicationStatus>();
@@ -209,3 +228,8 @@
         return displayAttr?.Name ?? status.ToString();
     }
 }
+@{
+    var createModel = new TransportRequestSystem.Pages.Applications.CreateModel(null);
+    await createModel.OnGet();
+}
+@await Html.PartialAsync("Create", createModel)
