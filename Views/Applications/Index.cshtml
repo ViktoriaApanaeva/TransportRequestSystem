@@ -4,6 +4,7 @@
 @{
     ViewData["Title"] = "Управление заявками";
     var filter = ViewBag.Filter as ApplicationFilter ?? new ApplicationFilter();
+
 }
 
 <!DOCTYPE html>
@@ -17,6 +18,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
     <!-- Навбар -->
@@ -53,11 +56,10 @@
                     </div>
 
                     <!-- Кнопка создания -->
-                    <button type="button"
-                            class="btn btn-success"
+                    <button type="button" class="btn btn-base"
                             data-bs-toggle="modal"
                             data-bs-target="#createModal">
-                        <i class="bi bi-plus-circle"></i> Создать заявку
+                        Создать заявку
                     </button>
                 </div>
             </div>
@@ -196,24 +198,49 @@
             </div>
         }
     </div>
-
-    <environment include="Development">
-        <script src="https://localhost:5149/_framework/aspnetcore-browser-refresh.js"></script>
-    </environment>
-
-    @section Scripts {
-        <script>
-            document.getElementById('searchButton').onclick = function() {
-                var search = document.getElementById('searchInput').value.toLowerCase();
-                var rows = document.querySelectorAll('tbody tr');
-
-                rows.forEach(function(row) {
-                    var text = row.textContent.toLowerCase();
-                    row.style.display = text.includes(search) ? '' : 'none';
-                });
-            };
-        </script>
+    
+    @{
+        await Html.RenderPartialAsync("_CreateModal", new Application
+        {
+            Number = Application.GenerateNumber(),
+            ApplicationDate = DateTime.Today,
+            Status = ApplicationStatus.CreatedOrModified
+        });
     }
+
+    <script>
+        // Поиск по таблице
+        document.getElementById('searchButton').onclick = function() {
+            var search = document.getElementById('searchInput').value.toLowerCase();
+            var rows = document.querySelectorAll('tbody tr');
+
+            rows.forEach(function(row) {
+                var text = row.textContent.toLowerCase();
+                row.style.display = text.includes(search) ? '' : 'none';
+            });
+        };
+
+        // Обработка нажатия Enter в поле поиска
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                document.getElementById('searchButton').click();
+            }
+        });
+
+        // Обработка отправки формы модального окна
+        document.addEventListener('DOMContentLoaded', function() {
+            var createForm = document.querySelector('#createModal form');
+            if (createForm) {
+                createForm.addEventListener('submit', function() {
+                    // Закрываем модальное окно после отправки
+                    var modal = bootstrap.Modal.getInstance(document.getElementById('createModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                });
+            }
+        });
+    </script>
 </body>
 </html>
 
@@ -227,9 +254,17 @@
 
         return displayAttr?.Name ?? status.ToString();
     }
+
+    public string GetStatusBadgeClass(ApplicationStatus status)
+    {
+        return status switch
+        {
+            ApplicationStatus.Approved => "bg-success",
+            ApplicationStatus.Completed => "bg-success",
+            ApplicationStatus.InProgress => "bg-primary",
+            // ApplicationStatus.Rejected => "bg-danger",
+            ApplicationStatus.RejectedByDispatcher => "bg-danger",
+            _ => "bg-secondary"
+        };
+    }
 }
-@{
-    var createModel = new TransportRequestSystem.Pages.Applications.CreateModel(null);
-    await createModel.OnGet();
-}
-@await Html.PartialAsync("Create", createModel)

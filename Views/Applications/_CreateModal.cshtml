@@ -1,0 +1,54 @@
+﻿@model TransportRequestSystem.Models.Application
+
+<div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Создание заявки</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <form asp-controller="Applications" asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="modal-body">
+                    <!-- Заказчик -->
+                    <div class="mb-4">
+                        <h5 class="mb-3">Раздел заказчика</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Дата</label>
+                                <input asp-for="ApplicationDate" type="date" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Начало поездки</label>
+                                <input asp-for="TripStart" type="datetime-local" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Окончание поездки</label>
+                                <input asp-for="TripEnd" type="datetime-local" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Организация</label>
+                                <input asp-for="OrganizationUnit" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">ФИО ответственного</label>
+                                <input asp-for="ResponsiblePerson" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Телефон</label>
+                                <input asp-for="Phone" class="form-control" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

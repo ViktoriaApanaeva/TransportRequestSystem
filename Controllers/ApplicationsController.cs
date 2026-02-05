@@ -13,15 +13,13 @@ namespace TransportRequestSystem.Controllers
     public class ApplicationsController : Controller
     {
         private readonly ApplicationDbContext _context;
-        private readonly CreateModel _createModel;
+        //private readonly CreateModel _createModel;
 
-        public ApplicationsController(ApplicationDbContext context, CreateModel createModel)
+        public ApplicationsController(ApplicationDbContext context)
         {
             _context = context;
-            _createModel = createModel;
         }
 
-        public CreateModel CreateModal { get; set; }
         // Главная страница с фильтрами
         public async Task<IActionResult> Index(ApplicationFilter filter, bool selectAll = false, bool reset = false)
         {
@@ -59,18 +57,38 @@ namespace TransportRequestSystem.Controllers
             return View(applications);
         }
 
-        // Создание заявки (GET)
+        public IActionResult GetCreateModel()
+        {
+            var model = new Application
+            {
+                Number = Application.GenerateNumber(),
+                ApplicationDate = DateTime.Today,
+                Status = ApplicationStatus.CreatedOrModified
+            };
+
+            return PartialView("_CreateModal", model);
+        }
+
+        // GET: Создание заявки 
         public IActionResult Create()
         {
-            return View(new Application
+            var application = new Application
             {
                 Number = Application.GenerateNumber(),
                 Status = ApplicationStatus.CreatedOrModified,
                 ApplicationDate = DateTime.Today
-            });
+            };
+
+            // Если это AJAX запрос, возвращаем частичное представление
+            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+            {
+                return PartialView("_CreateModal", application);
+            }
+
+            return View(application);
         }
 
-        // Создание заявки (POST)
+        // POST: Создание заявки
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Application application)
@@ -82,11 +100,48 @@ namespace TransportRequestSystem.Controllers
                 await _context.SaveChangesAsync();
 
                 TempData["Success"] = "Заявка успешно создана!";
+
+                // Если это AJAX запрос
+                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+                {
+                    return Json(new { success = true, redirectUrl = Url.Action("Index") });
+                }
+
                 return RedirectToAction(nameof(Index));
             }
 
-            return View(application);
+            // Если есть ошибки, возвращаем форму с ошибками
+            return PartialView("_CreateModal", application);
         }
+
+        //// Создание заявки (GET)
+        //public IActionResult Create()
+        //{
+        //    return View(new Application
+        //    {
+        //        Number = Application.GenerateNumber(),
+        //        Status = ApplicationStatus.CreatedOrModified,
+        //        ApplicationDate = DateTime.Today
+        //    });
+        //}
+
+        //// Создание заявки (POST)
+        //[HttpPost]
+        //[ValidateAntiForgeryToken]
+        //public async Task<IActionResult> Create(Application application)
+        //{
+        //    if (ModelState.IsValid)
+        //    {
+        //        application.CreatedAt = DateTime.Now;
+        //        _context.Add(application);
+        //        await _context.SaveChangesAsync();
+
+        //        TempData["Success"] = "Заявка успешно создана!";
+        //        return RedirectToAction(nameof(Index));
+        //    }
+
+        //    return View(application);
+        //}
 
         // Редактирование заявки (GET)
         public async Task<IActionResult> Edit(int id)
