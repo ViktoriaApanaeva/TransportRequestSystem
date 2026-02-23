@@ -21,16 +21,12 @@ namespace TransportRequestSystem.Models
         [Display(Name = "Дата")]
         [DataType(DataType.Date)]
         public DateTime ApplicationDate { get; set; } = DateTime.Today;
+        
+        [Display(Name = "Начало поездки")]
+        public DateTime? TripStart { get; set; }
 
-        [Display(Name = "Дата с")]
-        [DataType(DataType.Date)]
-        [NotMapped]
-        public DateTime? FilterDateFrom { get; set; }
-
-        [Display(Name = "Дата по")]
-        [DataType(DataType.Date)]
-        [NotMapped]
-        public DateTime? FilterDateTo { get; set; }
+        [Display(Name = "Окончание поездки")]
+        public DateTime? TripEnd { get; set; }
 
         [Required]
         [Display(Name = "Организационная единица")]
@@ -54,11 +50,6 @@ namespace TransportRequestSystem.Models
         public string Purpose { get; set; } = string.Empty;
 
         [Required]
-        [Display(Name = "Количество пассажиров")]
-        [Range(1, 50)]
-        public int PassengerCount { get; set; } = 1;
-
-        [Required]
         [Display(Name = "Маршрут")]
         [StringLength(500)]
         public string Route { get; set; } = string.Empty;
@@ -67,7 +58,7 @@ namespace TransportRequestSystem.Models
         [StringLength(1000)]
         public string Notes { get; set; } = string.Empty;
 
-        // Поля диспетчера (из второго макета)
+        // Поля диспетчера
         [Display(Name = "ФИО диспетчера")]
         [StringLength(100)]
         public string? DispatcherName { get; set; }

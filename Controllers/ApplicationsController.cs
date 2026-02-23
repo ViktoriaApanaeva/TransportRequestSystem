@@ -101,12 +101,6 @@ namespace TransportRequestSystem.Controllers
 
                 TempData["Success"] = "Заявка успешно создана!";
 
-                // Если это AJAX запрос
-                if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-                {
-                    return Json(new { success = true, redirectUrl = Url.Action("Index") });
-                }
-
                 return RedirectToAction(nameof(Index));
             }
 
@@ -114,34 +108,6 @@ namespace TransportRequestSystem.Controllers
             return PartialView("_CreateModal", application);
         }
 
-        //// Создание заявки (GET)
-        //public IActionResult Create()
-        //{
-        //    return View(new Application
-        //    {
-        //        Number = Application.GenerateNumber(),
-        //        Status = ApplicationStatus.CreatedOrModified,
-        //        ApplicationDate = DateTime.Today
-        //    });
-        //}
-
-        //// Создание заявки (POST)
-        //[HttpPost]
-        //[ValidateAntiForgeryToken]
-        //public async Task<IActionResult> Create(Application application)
-        //{
-        //    if (ModelState.IsValid)
-        //    {
-        //        application.CreatedAt = DateTime.Now;
-        //        _context.Add(application);
-        //        await _context.SaveChangesAsync();
-
-        //        TempData["Success"] = "Заявка успешно создана!";
-        //        return RedirectToAction(nameof(Index));
-        //    }
-
-        //    return View(application);
-        //}
 
         // Редактирование заявки (GET)
         public async Task<IActionResult> Edit(int id)

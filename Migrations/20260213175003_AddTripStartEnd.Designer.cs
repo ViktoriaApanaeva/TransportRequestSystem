@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TransportRequestSystem.Data;
@@ -11,9 +12,11 @@ using TransportRequestSystem.Data;
 namespace TransportRequestSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260213175003_AddTripStartEnd")]
+    partial class AddTripStartEnd
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -273,6 +276,9 @@ namespace TransportRequestSystem.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<int>("PassengerCount")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Phone")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -297,12 +303,6 @@ namespace TransportRequestSystem.Migrations
                         .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
-
-                    b.Property<DateTime?>("TripEnd")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("TripStart")
-                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -346,6 +346,7 @@ namespace TransportRequestSystem.Migrations
                         .HasDefaultValueSql("NOW()");
 
                     b.Property<string>("Comment")
+                        .IsRequired()
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 

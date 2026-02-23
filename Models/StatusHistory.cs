@@ -19,8 +19,7 @@ public class StatusHistory
     public string? NewStatus { get; set; }
     [Required]
     [MaxLength(100)]
-    public string? ChangedBy { get; set; }
-    [Required]
+    public string? ChangedBy { get; set; } = null;
     [MaxLength(500)]
     public string? Comment { get; set; }
     [Required]

@@ -1,52 +1,119 @@
 ﻿@model TransportRequestSystem.Models.Application
-
+<link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" />
 <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Создание заявки</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header text-white">
+                <h5 class="modal-title fw-bold">СОЗДАНИЕ ЗАЯВКИ</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
-            <form asp-controller="Applications" asp-action="Create" method="post">
+            <form asp-controller="Applications" asp-action="/Applications/Create" method="post">
                 @Html.AntiForgeryToken()
 
                 <div class="modal-body">
-                    <!-- Заказчик -->
-                    <div class="mb-4">
-                        <h5 class="mb-3">Раздел заказчика</h5>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Дата</label>
-                                <input asp-for="ApplicationDate" type="date" class="form-control" required>
+
+                    <div class="row">
+                        <!-- Раздел заказчика -->
+                        <div class="col-6 mb-3 border rounded p-3">
+                            <h6 class="fw-bold text-primary mb-3">Раздел заказчика</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-bold">Дата</label>
+                                    <input asp-for="ApplicationDate" type="date" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">Время</label>
+                                    <input asp-for="Time" type="time" class="form-control">
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">Начало поездки</label>
+                                    <input asp-for="TripStart" type="datetime-local" class="form-control">
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">Окончание поездки</label>
+                                    <input asp-for="TripEnd" type="datetime-local" class="form-control">
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">Орг.ед.</label>
+                                    <input asp-for="OrganizationUnit" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">ФИО ответственного</label>
+                                    <input asp-for="ResponsiblePerson" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">Телефон</label>
+                                    <input asp-for="Phone" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">Цель поездки</label>
+                                    <input asp-for="Purpose" class="form-control" required>
+                                </div>
+                                <div class="col-12 mb-2">
+                                    <label class="form-label fw-normal">Маршрут</label>
+                                    <textarea asp-for="Route" class="form-control" rows="1" required></textarea>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label fw-normal">Примечание</label>
+                                    <textarea asp-for="Notes" class="form-control" rows="1"></textarea>
+                                </div>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Начало поездки</label>
-                                <input asp-for="TripStart" type="datetime-local" class="form-control">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Окончание поездки</label>
-                                <input asp-for="TripEnd" type="datetime-local" class="form-control">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Организация</label>
-                                <input asp-for="OrganizationUnit" class="form-control" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">ФИО ответственного</label>
-                                <input asp-for="ResponsiblePerson" class="form-control" required>
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label fw-bold">Телефон</label>
-                                <input asp-for="Phone" class="form-control" required>
+                        </div>
+
+                        <!-- Раздел диспетчера -->
+                        <div class="col-6 mb-3 border rounded p-3">
+                            <h6 class="fw-bold text-primary mb-3">Раздел диспетчера</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">ФИО диспетчера</label>
+                                    <input asp-for="DispatcherName" class="form-control">
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">Телефон</label>
+                                    <input asp-for="DispatcherPhone" class="form-control">
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">ФИО водителя ТС</label>
+                                    <input asp-for="DriverName" class="form-control">
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">Телефон</label>
+                                    <input asp-for="DriverPhone" class="form-control">
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label fw-normal">Марка ТС</label>
+                                    <input asp-for="VehicleBrand" class="form-control">
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label fw-normal">Гос. номер</label>
+                                    <input asp-for="VehicleNumber" class="form-control">
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <label class="form-label fw-normal">Цвет ТС</label>
+                                    <input asp-for="VehicleColor" class="form-control">
+                                </div>
+                                <div class="col-12 mb-2">
+                                    <label class="form-label fw-normal">Примечание диспетчера</label>
+                                    <textarea asp-for="DispatcherNotes" class="form-control" rows="2"></textarea>
+                                </div>
+                                <!-- История изменения статусов -->
+                                <div>
+                                    <h6 class="fw-normal text-primary mb-2">История изменения статусов</h6>
+                                    <div class="small text-muted mb-3">
+                                        История будет отображаться после создания заявки.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
-                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                <div class="modal-footer justify-content-center">
+                    <button type="button" class="btn btn-based" data-bs-dismiss="modal">Отмена</button>
+                    <button type="submit" name="action" value="save" class="btn btn-based">Сохранить</button>
+                    @* <button type="submit" name="action" value="approve" class="btn btn-based">Утвердить</button>
+                    <button type="submit" name="action" value="reject" class="btn btn-based">Отклонить</button> *@
                 </div>
             </form>
         </div>

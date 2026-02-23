@@ -227,19 +227,6 @@
             }
         });
 
-        // Обработка отправки формы модального окна
-        document.addEventListener('DOMContentLoaded', function() {
-            var createForm = document.querySelector('#createModal form');
-            if (createForm) {
-                createForm.addEventListener('submit', function() {
-                    // Закрываем модальное окно после отправки
-                    var modal = bootstrap.Modal.getInstance(document.getElementById('createModal'));
-                    if (modal) {
-                        modal.hide();
-                    }
-                });
-            }
-        });
     </script>
 </body>
 </html>
@@ -262,8 +249,12 @@
             ApplicationStatus.Approved => "bg-success",
             ApplicationStatus.Completed => "bg-success",
             ApplicationStatus.InProgress => "bg-primary",
-            // ApplicationStatus.Rejected => "bg-danger",
+            ApplicationStatus.RejectedByDirector => "bg-danger",
             ApplicationStatus.RejectedByDispatcher => "bg-danger",
+            ApplicationStatus.AssignedToVehicle => "bg-info",
+            ApplicationStatus.CreatedOrModified => "bg-secondary",
+            ApplicationStatus.NotCompleted => "bg-warning",
+            ApplicationStatus.Deleted => "bg-dark",
             _ => "bg-secondary"
         };
     }

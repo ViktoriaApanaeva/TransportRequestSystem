@@ -66,3 +66,8 @@ h1 {
     background-color: #FFF3DB;
     border: 2px solid rgba(192, 156, 106, 1);
 }
+
+.form-check-input:checked {
+    background-color: #008EB9 !important;
+    border-color: #008EB9 !important;
+}
