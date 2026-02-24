@@ -33,6 +33,8 @@ namespace TransportRequestSystem.Data
                     .IsRequired()
                     .HasConversion<string>()
                     .HasMaxLength(50);
+                entity.Property(e => e.TripStart);
+                entity.Property(e => e.TripEnd);
 
                 entity.Property(e => e.OrganizationUnit)
                     .IsRequired()
