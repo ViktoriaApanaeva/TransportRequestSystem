@@ -13,7 +13,6 @@ namespace TransportRequestSystem.Controllers
     public class ApplicationsController : Controller
     {
         private readonly ApplicationDbContext _context;
-        //private readonly CreateModel _createModel;
 
         public ApplicationsController(ApplicationDbContext context)
         {
@@ -87,25 +86,44 @@ namespace TransportRequestSystem.Controllers
 
             return View(application);
         }
-
         // POST: Создание заявки
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(Application application)
         {
-            if (ModelState.IsValid)
+            try
             {
-                application.CreatedAt = DateTime.Now;
-                _context.Add(application);
+                application.Id = 0;
+
+                // Конвертируем все DateTime в UTC
+                application.ApplicationDate = DateTime.SpecifyKind(application.ApplicationDate, DateTimeKind.Utc);
+
+                if (application.TripStart.HasValue)
+                    application.TripStart = DateTime.SpecifyKind(application.TripStart.Value, DateTimeKind.Utc);
+
+                if (application.TripEnd.HasValue)
+                    application.TripEnd = DateTime.SpecifyKind(application.TripEnd.Value, DateTimeKind.Utc);
+
+                application.CreatedAt = DateTime.UtcNow;
+                application.Status = ApplicationStatus.CreatedOrModified;
+
+                if (string.IsNullOrEmpty(application.Number))
+                {
+                    application.Number = Application.GenerateNumber();
+                }
+
+                _context.Applications.Add(application);
                 await _context.SaveChangesAsync();
 
-                TempData["Success"] = "Заявка успешно создана!";
-
-                return RedirectToAction(nameof(Index));
+                TempData["Success"] = $"Заявка {application.Number} успешно создана!";
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error: {ex.Message}");
+                TempData["Error"] = $"Ошибка: {ex.Message}";
             }
 
-            // Если есть ошибки, возвращаем форму с ошибками
-            return PartialView("_CreateModal", application);
+            return RedirectToAction(nameof(Index));
         }
 
 

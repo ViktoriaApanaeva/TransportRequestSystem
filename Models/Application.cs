@@ -7,6 +7,7 @@ namespace TransportRequestSystem.Models
     public class Application
     {
         [Key]
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Display(Name = "Номер заявки")]
@@ -49,6 +50,10 @@ namespace TransportRequestSystem.Models
         [StringLength(200)]
         public string Purpose { get; set; } = string.Empty;
 
+        [Display(Name = "Кол-во пассажиров")]
+        [StringLength(20)]
+        public string Passengers { get; set; } = string.Empty;
+
         [Required]
         [Display(Name = "Маршрут")]
         [StringLength(500)]
@@ -61,7 +66,7 @@ namespace TransportRequestSystem.Models
         // Поля диспетчера
         [Display(Name = "ФИО диспетчера")]
         [StringLength(100)]
-        public string? DispatcherName { get; set; }
+        public string? DispatcherName { get; set; } 
 
         [Display(Name = "Телефон диспетчера")]
         [Phone]

@@ -227,10 +227,14 @@
             }
         });
 
+            document.querySelector('form').addEventListener('submit', function(e) {
+            console.log('Форма отправляется!');
+            // Не отменяем отправку, просто логируем
+        });
+
     </script>
 </body>
 </html>
-
 
 @functions {
     public string GetDisplayName(ApplicationStatus status)

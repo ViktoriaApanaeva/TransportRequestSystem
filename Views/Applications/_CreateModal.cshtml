@@ -1,18 +1,19 @@
 ﻿@model TransportRequestSystem.Models.Application
 <link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" />
 <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header text-white">
                 <h5 class="modal-title fw-bold">СОЗДАНИЕ ЗАЯВКИ</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
-            <form asp-controller="Applications" asp-action="/Applications/Create" method="post">
+            <form action="/Applications/Create" method="post">
                 @Html.AntiForgeryToken()
 
                 <div class="modal-body">
-
+                    <input type="hidden" asp-for="Number" />
+                    <input type="hidden" asp-for="Status" />
                     <div class="row">
                         <!-- Раздел заказчика -->
                         <div class="col-6 mb-3 border rounded p-3">
@@ -21,10 +22,6 @@
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-bold">Дата</label>
                                     <input asp-for="ApplicationDate" type="date" class="form-control" required>
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <label class="form-label fw-normal">Время</label>
-                                    <input asp-for="Time" type="time" class="form-control">
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Начало поездки</label>
@@ -49,6 +46,10 @@
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Цель поездки</label>
                                     <input asp-for="Purpose" class="form-control" required>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <label class="form-label fw-normal">Кол-во пассажиров</label>
+                                    <input asp-for="Passengers" class="form-control">
                                 </div>
                                 <div class="col-12 mb-2">
                                     <label class="form-label fw-normal">Маршрут</label>
@@ -111,7 +112,7 @@
 
                 <div class="modal-footer justify-content-center">
                     <button type="button" class="btn btn-based" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" name="action" value="save" class="btn btn-based">Сохранить</button>
+                    <button type="submit" value="save" class="btn btn-based">Сохранить</button>
                     @* <button type="submit" name="action" value="approve" class="btn btn-based">Утвердить</button>
                     <button type="submit" name="action" value="reject" class="btn btn-based">Отклонить</button> *@
                 </div>

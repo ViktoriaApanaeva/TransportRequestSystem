@@ -55,7 +55,8 @@ namespace TransportRequestSystem.Data
                 entity.Property(e => e.Route)
                     .IsRequired()
                     .HasMaxLength(500);
-
+                entity.Property(e => e.Passengers)
+                    .HasMaxLength(20);
                 entity.Property(e => e.Notes)
                     .HasMaxLength(1000);
 
