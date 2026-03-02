@@ -12,8 +12,9 @@
                 @Html.AntiForgeryToken()
 
                 <div class="modal-body">
-                    <input type="hidden" asp-for="Number" />
-                    <input type="hidden" asp-for="Status" />
+                    <input type="hidden" name="Id" value="0" />
+                    <input type="hidden" name="Number" value="@Model.Number" />
+                    <input type="hidden" name="Status" value="CreatedOrModified" />
                     <div class="row">
                         <!-- Раздел заказчика -->
                         <div class="col-6 mb-3 border rounded p-3">
@@ -21,43 +22,43 @@
                             <div class="row">
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-bold">Дата</label>
-                                    <input asp-for="ApplicationDate" type="date" class="form-control" required>
+                                    <input name="ApplicationDate" type="date" class="form-control" required>
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Начало поездки</label>
-                                    <input asp-for="TripStart" type="datetime-local" class="form-control">
+                                    <input name="TripStart" type="datetime-local" class="form-control">
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Окончание поездки</label>
-                                    <input asp-for="TripEnd" type="datetime-local" class="form-control">
+                                    <input name="TripEnd" type="datetime-local" class="form-control">
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Орг.ед.</label>
-                                    <input asp-for="OrganizationUnit" class="form-control" required>
+                                    <input name="OrganizationUnit" class="form-control" required>
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">ФИО ответственного</label>
-                                    <input asp-for="ResponsiblePerson" class="form-control" required>
+                                    <input name="ResponsiblePerson" class="form-control" required>
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Телефон</label>
-                                    <input asp-for="Phone" class="form-control" required>
+                                    <input name="Phone" class="form-control" required>
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Цель поездки</label>
-                                    <input asp-for="Purpose" class="form-control" required>
+                                    <input name="Purpose" class="form-control" required>
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Кол-во пассажиров</label>
-                                    <input asp-for="Passengers" class="form-control">
+                                    <input name="Passengers" class="form-control">
                                 </div>
                                 <div class="col-12 mb-2">
                                     <label class="form-label fw-normal">Маршрут</label>
-                                    <textarea asp-for="Route" class="form-control" rows="1" required></textarea>
+                                    <textarea name="Route" class="form-control" rows="1" required></textarea>
                                 </div>
                                 <div class="col-12">
                                     <label class="form-label fw-normal">Примечание</label>
-                                    <textarea asp-for="Notes" class="form-control" rows="1"></textarea>
+                                    <textarea name="Notes" class="form-control" rows="1"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -68,35 +69,35 @@
                             <div class="row">
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">ФИО диспетчера</label>
-                                    <input asp-for="DispatcherName" class="form-control">
+                                    <input name="DispatcherName" class="form-control">
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Телефон</label>
-                                    <input asp-for="DispatcherPhone" class="form-control">
+                                    <input name="DispatcherPhone" class="form-control">
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">ФИО водителя ТС</label>
-                                    <input asp-for="DriverName" class="form-control">
+                                    <input name="DriverName" class="form-control">
                                 </div>
                                 <div class="col-md-6 mb-2">
                                     <label class="form-label fw-normal">Телефон</label>
-                                    <input asp-for="DriverPhone" class="form-control">
+                                    <input name="DriverPhone" class="form-control">
                                 </div>
                                 <div class="col-md-4 mb-2">
                                     <label class="form-label fw-normal">Марка ТС</label>
-                                    <input asp-for="VehicleBrand" class="form-control">
+                                    <input name="VehicleBrand" class="form-control">
                                 </div>
                                 <div class="col-md-4 mb-2">
                                     <label class="form-label fw-normal">Гос. номер</label>
-                                    <input asp-for="VehicleNumber" class="form-control">
+                                    <input name="VehicleNumber" class="form-control">
                                 </div>
                                 <div class="col-md-4 mb-2">
                                     <label class="form-label fw-normal">Цвет ТС</label>
-                                    <input asp-for="VehicleColor" class="form-control">
+                                    <input name="VehicleColor" class="form-control">
                                 </div>
                                 <div class="col-12 mb-2">
                                     <label class="form-label fw-normal">Примечание диспетчера</label>
-                                    <textarea asp-for="DispatcherNotes" class="form-control" rows="2"></textarea>
+                                    <textarea name="DispatcherNotes" class="form-control" rows="2"></textarea>
                                 </div>
                                 <!-- История изменения статусов -->
                                 <div>
@@ -112,9 +113,9 @@
 
                 <div class="modal-footer justify-content-center">
                     <button type="button" class="btn btn-based" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" value="save" class="btn btn-based">Сохранить</button>
-                    @* <button type="submit" name="action" value="approve" class="btn btn-based">Утвердить</button>
-                    <button type="submit" name="action" value="reject" class="btn btn-based">Отклонить</button> *@
+                    <button type="submit" class="btn btn-based">Сохранить</button>
+                    <button type="submit" name="action" value="approve" class="btn btn-based">Утвердить</button>
+                    <button type="submit" name="action" value="reject" class="btn btn-based">Отклонить</button>
                 </div>
             </form>
         </div>

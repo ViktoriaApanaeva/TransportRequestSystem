@@ -14,6 +14,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"]</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/applications.css" asp-append-version="true" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -155,10 +156,12 @@
                         <tr>
                             <th>№</th>
                             <th>Дата</th>
-                            <th>Организация</th>
+                            <th>Орг. ед.</th>
                             <th>Ответственный</th>
+                            <th>Цель</th>
+                            <th>Маршрут</th>
                             <th>Статус</th>
-                            <th>Действия</th>
+                            <th style="border-right:none !important"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -171,6 +174,8 @@
                                 <td>@app.ApplicationDate.ToString("dd.MM.yyyy")</td>
                                 <td>@app.OrganizationUnit</td>
                                 <td>@app.ResponsiblePerson</td>
+                                <td>@app.Purpose</td>
+                                <td>@app.Route</td>
                                 <td>
                                     <span class="badge
                                                 @(app.Status == ApplicationStatus.Approved || app.Status == ApplicationStatus.Completed ? "bg-success" :
@@ -180,9 +185,11 @@
                                 @statusName
                             </span>
                         </td>
-                        <td>
-                            <a asp-action="Edit" asp-route-id="@app.Id" class="btn btn-sm btn-outline-primary">
-                                Редактировать
+                        <td style="border-right:none !important">
+                            <a href="#" class="btn btn-sm btn-outline-primary"
+                               onclick="loadApplication(@app.Id)"
+                               title="Редактировать" >
+                                <i class="bi bi-pencil"></i>
                             </a>
                         </td>
                     </tr>
@@ -204,7 +211,22 @@
         {
             Number = Application.GenerateNumber(),
             ApplicationDate = DateTime.Today,
-            Status = ApplicationStatus.CreatedOrModified
+            Status = ApplicationStatus.CreatedOrModified, 
+            OrganizationUnit = "",
+            ResponsiblePerson = "",
+            Phone = "",
+            Purpose = "",
+            Passengers = "",
+            Route = "",
+            Notes = "",
+            DispatcherName = "",
+            DispatcherPhone = "",
+            DriverName = "",
+            DriverPhone = "",
+            VehicleBrand = "",
+            VehicleNumber = "",
+            VehicleColor = "",
+            DispatcherNotes = ""
         });
     }
 
@@ -227,11 +249,34 @@
             }
         });
 
-            document.querySelector('form').addEventListener('submit', function(e) {
-            console.log('Форма отправляется!');
-            // Не отменяем отправку, просто логируем
+        document.getElementById('createModal').querySelector('form').addEventListener('submit', function(e) {
+            console.log('Форма создания отправляется!');
         });
 
+        function loadApplication(id) 
+        {
+            fetch('/Applications/Edit/' + id)
+                .then(response => response.json()) // Возвращаем JSON вместо HTML
+                .then(data => {
+                    // Заполняем поля формы
+                    document.querySelector('#createModal input[name="Id"]').value = data.id;
+                    document.querySelector('#createModal input[name="Number"]').value = data.number;
+                    document.querySelector('#createModal input[name="ApplicationDate"]').value = data.applicationDate.substring(0,10);
+                    document.querySelector('#createModal input[name="OrganizationUnit"]').value = data.organizationUnit;
+                    document.querySelector('#createModal input[name="ResponsiblePerson"]').value = data.responsiblePerson;
+                    document.querySelector('#createModal input[name="Phone"]').value = data.phone;
+                    document.querySelector('#createModal input[name="Purpose"]').value = data.purpose;
+                    document.querySelector('#createModal textarea[name="Route"]').value = data.route;
+
+                    // Меняем заголовок и action
+                    document.querySelector('#createModal .modal-title').textContent = 'РЕДАКТИРОВАНИЕ ЗАЯВКИ';
+                    document.querySelector('#createModal form').action = '/Applications/Edit/' + id;
+
+                    // Показываем модальное окно
+                    var modal = new bootstrap.Modal(document.getElementById('createModal'));
+                    modal.show();
+                });
+        }
     </script>
 </body>
 </html>

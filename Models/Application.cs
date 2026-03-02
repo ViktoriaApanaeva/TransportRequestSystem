@@ -41,7 +41,6 @@ namespace TransportRequestSystem.Models
 
         [Required]
         [Display(Name = "Телефон")]
-        [Phone]
         [StringLength(20)]
         public string Phone { get; set; } = string.Empty;
 
@@ -52,7 +51,7 @@ namespace TransportRequestSystem.Models
 
         [Display(Name = "Кол-во пассажиров")]
         [StringLength(20)]
-        public string Passengers { get; set; } = string.Empty;
+        public string? Passengers { get; set; } 
 
         [Required]
         [Display(Name = "Маршрут")]
@@ -61,7 +60,7 @@ namespace TransportRequestSystem.Models
 
         [Display(Name = "Примечание")]
         [StringLength(1000)]
-        public string Notes { get; set; } = string.Empty;
+        public string? Notes { get; set; }
 
         // Поля диспетчера
         [Display(Name = "ФИО диспетчера")]
@@ -155,4 +154,6 @@ namespace TransportRequestSystem.Models
         [Display(Name = "Статусы")]
         public List<ApplicationStatus> SelectedStatuses { get; set; } = new List<ApplicationStatus>();
     }
+
+    
 }

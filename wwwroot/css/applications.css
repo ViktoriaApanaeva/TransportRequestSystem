@@ -71,3 +71,36 @@ h1 {
     background-color: #008EB9 !important;
     border-color: #008EB9 !important;
 }
+
+.table {
+    text-align: center;
+    background-color: transparent !important;
+    border-collapse: separate !important;
+    border: 3px solid #008EB9 !important;
+}
+
+.table td,
+.table th {
+    background-color: transparent !important;
+    border-right: 2px solid #008EB9 !important;
+}
+
+
+.btn-outline-primary {
+    color: #008EB9 !important;
+    border-color: #008EB9 !important;
+}
+
+.btn-outline-primary:hover {
+    color: #fff !important;
+    background-color: #008EB9 !important;
+    border-color: #008EB9 !important;
+}
+
+.btn-outline-primary i {
+    color: #008EB9 !important;
+}
+
+.btn-outline-primary:hover i {
+    color: #fff !important;
+}

@@ -26,7 +26,6 @@ namespace TransportRequestSystem.Data
                 entity.HasKey(e => e.Id);
 
                 entity.Property(e => e.Number)
-                    .IsRequired()
                     .HasMaxLength(50);
 
                 entity.Property(e => e.Status)

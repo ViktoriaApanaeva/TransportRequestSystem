@@ -93,33 +93,46 @@ namespace TransportRequestSystem.Controllers
         {
             try
             {
+                // Генерируем номер ПЕРВЫМ ДЕЛОМ
+                if (string.IsNullOrEmpty(application.Number))
+                {
+                    application.Number = Application.GenerateNumber();
+                    Console.WriteLine($"Generated number: {application.Number}");
+                }
+
                 application.Id = 0;
 
-                // Конвертируем все DateTime в UTC
+                // Конвертируем даты
                 application.ApplicationDate = DateTime.SpecifyKind(application.ApplicationDate, DateTimeKind.Utc);
-
                 if (application.TripStart.HasValue)
                     application.TripStart = DateTime.SpecifyKind(application.TripStart.Value, DateTimeKind.Utc);
-
                 if (application.TripEnd.HasValue)
                     application.TripEnd = DateTime.SpecifyKind(application.TripEnd.Value, DateTimeKind.Utc);
 
                 application.CreatedAt = DateTime.UtcNow;
                 application.Status = ApplicationStatus.CreatedOrModified;
 
-                if (string.IsNullOrEmpty(application.Number))
+                // Проверяем ModelState ПОСЛЕ установки номера
+                if (!ModelState.IsValid)
                 {
-                    application.Number = Application.GenerateNumber();
+                    var errors = ModelState.Values.SelectMany(v => v.Errors)
+                                                  .Select(e => e.ErrorMessage);
+                    Console.WriteLine("ModelState errors: " + string.Join(", ", errors));
+                    TempData["Error"] = "Ошибка валидации: " + string.Join(", ", errors);
+                    return RedirectToAction(nameof(Index));
                 }
 
                 _context.Applications.Add(application);
                 await _context.SaveChangesAsync();
 
+                Console.WriteLine($"SUCCESS! Saved application with ID: {application.Id}");
                 TempData["Success"] = $"Заявка {application.Number} успешно создана!";
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error: {ex.Message}");
+                if (ex.InnerException != null)
+                    Console.WriteLine($"Inner: {ex.InnerException.Message}");
                 TempData["Error"] = $"Ошибка: {ex.Message}";
             }
 
@@ -130,14 +143,11 @@ namespace TransportRequestSystem.Controllers
         // Редактирование заявки (GET)
         public async Task<IActionResult> Edit(int id)
         {
-            var application = await _context.Applications
-                .Include(a => a.StatusHistory)
-                .FirstOrDefaultAsync(a => a.Id == id);
-
+            var application = await _context.Applications.FindAsync(id);
             if (application == null)
                 return NotFound();
 
-            return View(application);
+            return Json(application); // Возвращаем JSON
         }
 
         // Редактирование заявки (POST)
@@ -147,37 +157,48 @@ namespace TransportRequestSystem.Controllers
         {
             if (id != application.Id)
                 return NotFound();
+            ModelState.Remove("Number");
+            ModelState.Remove("Status");
 
-            if (ModelState.IsValid)
+            try
             {
-                var oldApp = await _context.Applications.FindAsync(id);
-                if (oldApp == null)
+                var existingApp = await _context.Applications.FindAsync(id);
+                if (existingApp == null)
                     return NotFound();
 
-                var oldStatus = oldApp.Status;
-
-                // Сохраняем неизменяемые поля
-                application.CreatedAt = oldApp.CreatedAt;
-                application.Number = oldApp.Number;
-                application.UpdatedAt = DateTime.Now;
-
-                _context.Entry(oldApp).CurrentValues.SetValues(application);
-
-                // История изменений статуса
-                if (oldStatus != application.Status)
-                {
-                    await AddStatusHistory(id, oldStatus.ToString(),
-                        application.Status.ToString(), "Система");
-                }
+                // Обновляем поля
+                existingApp.Number = application.Number; 
+                existingApp.Status = application.Status;
+                existingApp.ApplicationDate = application.ApplicationDate;
+                existingApp.TripStart = application.TripStart;
+                existingApp.TripEnd = application.TripEnd;
+                existingApp.OrganizationUnit = application.OrganizationUnit;
+                existingApp.ResponsiblePerson = application.ResponsiblePerson;
+                existingApp.Phone = application.Phone;
+                existingApp.Purpose = application.Purpose;
+                existingApp.Passengers = application.Passengers;
+                existingApp.Route = application.Route;
+                existingApp.Notes = application.Notes;
+                existingApp.DispatcherName = application.DispatcherName;
+                existingApp.DispatcherPhone = application.DispatcherPhone;
+                existingApp.DriverName = application.DriverName;
+                existingApp.DriverPhone = application.DriverPhone;
+                existingApp.VehicleBrand = application.VehicleBrand;
+                existingApp.VehicleNumber = application.VehicleNumber;
+                existingApp.VehicleColor = application.VehicleColor;
+                existingApp.DispatcherNotes = application.DispatcherNotes;
+                existingApp.UpdatedAt = DateTime.UtcNow;
 
                 await _context.SaveChangesAsync();
                 TempData["Success"] = "Заявка обновлена!";
-                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
             }
 
-            return View(application);
+            return RedirectToAction(nameof(Index));
         }
-
         // Удаление заявки
         [HttpPost]
         public async Task<IActionResult> Delete(int id)
