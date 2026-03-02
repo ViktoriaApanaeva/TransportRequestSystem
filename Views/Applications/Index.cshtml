@@ -1,10 +1,11 @@
 ﻿@model List<TransportRequestSystem.Models.Application>
 @using TransportRequestSystem.Models
+@using TransportRequestSystem.Pages.Applications
+@using System.Linq
 
 @{
     ViewData["Title"] = "Управление заявками";
     var filter = ViewBag.Filter as ApplicationFilter ?? new ApplicationFilter();
-
 }
 
 <!DOCTYPE html>
@@ -12,142 +13,120 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"]</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="~/css/applications.css" asp-append-version="true" />
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
 <body>
-    <!-- Навбар -->
+    <!-- Навигация -->
     <nav class="navbar-custom">
         <div class="container d-flex justify-content-center">
-                <a href="#" class="nav-btn">
-                    Управление заявками
-                </a>
-                <a href="/daily" class="nav-btn">
-                    Ежедневная сводка
-                </a>
-                <a href="/create" class="nav-btn">
-                    Подать заявку
-                </a>
-                <a href="#" class="nav-btn">
-                    Перечень заявок
-                </a> 
+            <a href="#" class="nav-btn">Управление заявками</a>
+            <a href="/daily" class="nav-btn">Ежедневная сводка</a>
+            <a href="/create" class="nav-btn">Подать заявку</a>
+            <a href="#" class="nav-btn">Перечень заявок</a>
         </div>
     </nav>
 
     <!-- Основной контент -->
     <div class="container mt-4">
-        <!-- Заголовок и кнопки -->
-        <div class="main-content">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1>Управление заявками</h1>
-                <div class="d-flex gap-2">
-                    <!-- Поиск -->
-                    <div class="input-group" style="width: 300px; height: 40px;">
-                        <input type="text" class="form-control" placeholder="Поиск..." id="searchInput">
-                        <button class="btn searchButton" type="button" id="searchButton">
-                            Поиск
-                        </button>
-                    </div>
-
-                    <!-- Кнопка создания -->
-                    <button type="button" class="btn btn-base"
-                            data-bs-toggle="modal"
-                            data-bs-target="#createModal">
-                        Создать заявку
+        <!-- Шапка с заголовком и поиском -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Управление заявками</h1>
+            <div class="d-flex gap-2">
+                <!-- Поиск -->
+                <div class="input-group" style="width: 300px;">
+                    <input type="text" class="form-control" placeholder="Поиск..." id="searchInput">
+                    <button class="btn searchButton" type="button" id="searchButton">
+                        Поиск
                     </button>
                 </div>
-            </div>
 
-            <!-- Фильтры -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <form method="get" asp-action="Index">
-                        <div class="row">
-                            <!-- Дата -->
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Дата</label>
-                                <div class="mb-3">
-                                    <input type="date" name="DateFrom" class="form-control mb-3"
-                                           value="@(filter.DateFrom?.ToString("yyyy-MM-dd"))">
-                                    <input type="date" name="DateTo" class="form-control"
-                                           value="@(filter.DateTo?.ToString("yyyy-MM-dd"))">
-                                </div>
-                            </div>
-
-                            <!-- Организация -->
-                            <div class="col-md-4 mb-3">
-                                <label class="form-label">Организация</label>
-                                <input type="text" name="OrganizationUnit" class="form-control"
-                                       value="@filter.OrganizationUnit">
-                            </div>
-
-                            <!-- Кнопки -->
-                            <div class="col-md-6 mb-3 d-flex align-items-end gap-2">
-                                <button type="submit" class="btn btn-base">Обновить</button>
-                                <button type="submit"
-                                        name="reset"
-                                        value="true"
-                                        class="btn btn-base"
-                                        style="background-color:grey;">
-                                    Сбросить
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Чекбоксы статусов -->
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="d-flex align-items-baseline mb-2">
-                                    <label class="form-label fw-bold" style="width:fit-content;">Статус</label>
-                                    <button type="submit"
-                                            name="selectAll"
-                                            value="true"
-                                            class="btn btn-base ms-4"
-                                            style="width:70px !important; height: 30px !important;">
-                                        Все
-                                    </button>
-                                </div>
-                                
-                                <div class="row">
-                                    @{
-                                        var allStatuses = Enum.GetValues<ApplicationStatus>();
-                                        var groups = allStatuses.Chunk(3).ToList();
-                                    }
-
-                                    @foreach (var group in groups)
-                                    {
-                                        <div class="col-md-4">
-                                            @foreach (var status in group)
-                                            {
-                                                var displayName = GetDisplayName(status);
-                                                var isChecked = filter.SelectedStatuses?.Contains(status) ?? true;
-
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox"
-                                                           name="SelectedStatuses" value="@status"
-                                                           id="status_@status" @(isChecked ? "checked" : "")>
-                                                    <label class="form-check-label" for="status_@status">
-                                                        @displayName
-                                                    </label>
-                                                </div>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
+                <!-- Кнопка создания -->
+                <button type="button" class="btn btn-base"
+                        data-bs-toggle="modal"
+                        data-bs-target="#createModal">
+                    Создать заявку
+                </button>
             </div>
         </div>
-        <!-- Таблица -->
+
+        <!-- Фильтры -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" asp-action="Index">
+                    <div class="row">
+                        <!-- Фильтр по дате -->
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Дата</label>
+                            <input type="date" name="DateFrom" class="form-control mb-2" value="@filter.DateFrom?.ToString("yyyy-MM-dd")">
+                            <input type="date" name="DateTo" class="form-control" value="@filter.DateTo?.ToString("yyyy-MM-dd")">
+                        </div>
+
+                        <!-- Фильтр по организации -->
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Организация</label>
+                            <input type="text" name="OrganizationUnit" class="form-control" value="@filter.OrganizationUnit">
+                        </div>
+
+                        <!-- Кнопки управления фильтрами -->
+                        <div class="col-md-6 mb-3 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-base">Обновить</button>
+                            <button type="submit"
+                                    name="reset"
+                                    value="true"
+                                    class="btn btn-base"
+                                    style="background-color:grey;">
+                                Сбросить
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Фильтр по статусам -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="d-flex align-items-center gap-3 mb-2">
+                                <label class="fw-bold">Статус</label>
+                                <button type="submit"
+                                        name="selectAll"
+                                        value="true"
+                                        class="btn btn-base ms-4"
+                                        style="width:70px !important; height: 30px !important;">
+                                    Все
+                                </button>
+                            </div>
+                            <div class="row">
+                                @{
+                                    var statusGroups = Enum.GetValues<ApplicationStatus>().Chunk(3).ToList();
+                                }
+                                @foreach (var group in statusGroups)
+                                {
+                                    <div class="col-md-4">
+                                        @foreach (var status in group)
+                                        {
+                                            var isChecked = filter.SelectedStatuses?.Contains(status) ?? true;
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox"
+                                                       name="SelectedStatuses" value="@status"
+                                                       id="status_@status" @(isChecked ? "checked" : "")>
+                                                <label class="form-check-label" for="status_@status">
+                                                    @IndexModel.GetDisplayName(status)
+                                                </label>
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Таблица заявок -->
         @if (Model.Any())
         {
             <div class="table-responsive">
@@ -161,14 +140,12 @@
                             <th>Цель</th>
                             <th>Маршрут</th>
                             <th>Статус</th>
-                            <th style="border-right:none !important"></th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var app in Model)
                         {
-                            var statusName = GetDisplayName(app.Status);
-
                             <tr>
                                 <td>@app.Number</td>
                                 <td>@app.ApplicationDate.ToString("dd.MM.yyyy")</td>
@@ -177,23 +154,16 @@
                                 <td>@app.Purpose</td>
                                 <td>@app.Route</td>
                                 <td>
-                                    <span class="badge
-                                                @(app.Status == ApplicationStatus.Approved || app.Status == ApplicationStatus.Completed ? "bg-success" :
-                                                                                    app.Status == ApplicationStatus.InProgress ? "bg-primary" :
-                                                                                    app.Status.ToString().Contains("Отклонена") ? "bg-danger" :
-                                                                                    "bg-secondary")">
-                                @statusName
-                            </span>
-                        </td>
-                        <td style="border-right:none !important">
-                            <a href="#" class="btn btn-sm btn-outline-primary"
-                               onclick="loadApplication(@app.Id)"
-                               title="Редактировать" >
-                                <i class="bi bi-pencil"></i>
-                            </a>
-                        </td>
-                    </tr>
-                                        }
+                                    <span class="badge @IndexModel.GetStatusBadgeClass(app.Status)">@IndexModel.GetDisplayName(app.Status)</span>
+                                </td>
+                                <td>
+                                    <a href="#" class="btn btn-sm btn-outline-primary"
+                                       onclick="loadApplication(@app.Id)" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
                     </tbody>
                 </table>
             </div>
@@ -201,110 +171,62 @@
         else
         {
             <div class="alert alert-info">
-                Заявок не найдено. <a asp-action="Create">Создайте первую</a>.
+                Заявок не найдено. <a href="#" data-bs-toggle="modal" data-bs-target="#createModal">Создайте первую</a>.
             </div>
         }
     </div>
-    
+
+    <!-- Модальное окно для создания/редактирования -->
     @{
         await Html.RenderPartialAsync("_CreateModal", new Application
         {
             Number = Application.GenerateNumber(),
             ApplicationDate = DateTime.Today,
-            Status = ApplicationStatus.CreatedOrModified, 
-            OrganizationUnit = "",
-            ResponsiblePerson = "",
-            Phone = "",
-            Purpose = "",
-            Passengers = "",
-            Route = "",
-            Notes = "",
-            DispatcherName = "",
-            DispatcherPhone = "",
-            DriverName = "",
-            DriverPhone = "",
-            VehicleBrand = "",
-            VehicleNumber = "",
-            VehicleColor = "",
-            DispatcherNotes = ""
+            Status = ApplicationStatus.CreatedOrModified
         });
     }
 
     <script>
-        // Поиск по таблице
-        document.getElementById('searchButton').onclick = function() {
-            var search = document.getElementById('searchInput').value.toLowerCase();
-            var rows = document.querySelectorAll('tbody tr');
+        // Клиентский поиск по таблице
+        document.getElementById('searchButton').onclick = filterTable;
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') filterTable();
+        });
 
-            rows.forEach(function(row) {
-                var text = row.textContent.toLowerCase();
+        function filterTable() {
+            const search = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('tbody tr').forEach(row => {
+                const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(search) ? '' : 'none';
             });
-        };
+        }
 
-        // Обработка нажатия Enter в поле поиска
-        document.getElementById('searchInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                document.getElementById('searchButton').click();
-            }
-        });
-
-        document.getElementById('createModal').querySelector('form').addEventListener('submit', function(e) {
-            console.log('Форма создания отправляется!');
-        });
-
-        function loadApplication(id) 
-        {
+        // Загрузка данных заявки в модальное окно для редактирования
+        function loadApplication(id) {
             fetch('/Applications/Edit/' + id)
-                .then(response => response.json()) // Возвращаем JSON вместо HTML
+                .then(response => response.json())
                 .then(data => {
                     // Заполняем поля формы
-                    document.querySelector('#createModal input[name="Id"]').value = data.id;
-                    document.querySelector('#createModal input[name="Number"]').value = data.number;
-                    document.querySelector('#createModal input[name="ApplicationDate"]').value = data.applicationDate.substring(0,10);
-                    document.querySelector('#createModal input[name="OrganizationUnit"]').value = data.organizationUnit;
-                    document.querySelector('#createModal input[name="ResponsiblePerson"]').value = data.responsiblePerson;
-                    document.querySelector('#createModal input[name="Phone"]').value = data.phone;
-                    document.querySelector('#createModal input[name="Purpose"]').value = data.purpose;
-                    document.querySelector('#createModal textarea[name="Route"]').value = data.route;
+                    Object.keys(data).forEach(key => {
+                        const input = document.querySelector(`#createModal [name="${key}"]`);
+                        if (input) {
+                            if (key === 'applicationDate') {
+                                input.value = data[key].substring(0, 10);
+                            } else {
+                                input.value = data[key] || '';
+                            }
+                        }
+                    });
 
-                    // Меняем заголовок и action
+                    // Обновляем заголовок и адрес отправки
                     document.querySelector('#createModal .modal-title').textContent = 'РЕДАКТИРОВАНИЕ ЗАЯВКИ';
                     document.querySelector('#createModal form').action = '/Applications/Edit/' + id;
 
                     // Показываем модальное окно
-                    var modal = new bootstrap.Modal(document.getElementById('createModal'));
-                    modal.show();
+                    new bootstrap.Modal(document.getElementById('createModal')).show();
                 });
         }
     </script>
 </body>
 </html>
 
-@functions {
-    public string GetDisplayName(ApplicationStatus status)
-    {
-        var member = status.GetType().GetMember(status.ToString())[0];
-        var displayAttr = member.GetCustomAttributes(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute), false)
-            .FirstOrDefault() as System.ComponentModel.DataAnnotations.DisplayAttribute;
-
-        return displayAttr?.Name ?? status.ToString();
-    }
-
-    public string GetStatusBadgeClass(ApplicationStatus status)
-    {
-        return status switch
-        {
-            ApplicationStatus.Approved => "bg-success",
-            ApplicationStatus.Completed => "bg-success",
-            ApplicationStatus.InProgress => "bg-primary",
-            ApplicationStatus.RejectedByDirector => "bg-danger",
-            ApplicationStatus.RejectedByDispatcher => "bg-danger",
-            ApplicationStatus.AssignedToVehicle => "bg-info",
-            ApplicationStatus.CreatedOrModified => "bg-secondary",
-            ApplicationStatus.NotCompleted => "bg-warning",
-            ApplicationStatus.Deleted => "bg-dark",
-            _ => "bg-secondary"
-        };
-    }
-}

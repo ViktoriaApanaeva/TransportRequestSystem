@@ -12,6 +12,7 @@
                 @Html.AntiForgeryToken()
 
                 <div class="modal-body">
+                    <input type="hidden" name="actionType" id="actionType" value="save" />
                     <input type="hidden" name="Id" value="0" />
                     <input type="hidden" name="Number" value="@Model.Number" />
                     <input type="hidden" name="Status" value="CreatedOrModified" />
@@ -113,9 +114,9 @@
 
                 <div class="modal-footer justify-content-center">
                     <button type="button" class="btn btn-based" data-bs-dismiss="modal">Отмена</button>
-                    <button type="submit" class="btn btn-based">Сохранить</button>
-                    <button type="submit" name="action" value="approve" class="btn btn-based">Утвердить</button>
-                    <button type="submit" name="action" value="reject" class="btn btn-based">Отклонить</button>
+                    <button type="submit" class="btn btn-based" onclick="document.getElementById('actionType').value='save'">Сохранить</button>
+                    <button type="submit" class="btn btn-based" onclick="document.getElementById('actionType').value='approve'">Утвердить</button>
+                    <button type="submit" class="btn btn-based" onclick="document.getElementById('actionType').value='reject'">Отклонить</button>
                 </div>
             </form>
         </div>

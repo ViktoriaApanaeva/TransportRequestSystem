@@ -1,12 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
-using System.Linq;
-using System.Reflection;
-using System.Threading.Tasks;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
-using TransportRequestSystem.Pages.Applications;
 
 namespace TransportRequestSystem.Controllers
 {
@@ -23,21 +18,17 @@ namespace TransportRequestSystem.Controllers
         public async Task<IActionResult> Index(ApplicationFilter filter, bool selectAll = false, bool reset = false)
         {
             if (reset)
-            {
                 return RedirectToAction(nameof(Index));
-            }
 
             if (selectAll)
-            {
                 filter.SelectedStatuses = Enum.GetValues<ApplicationStatus>().ToList();
-            }
 
             var query = _context.Applications
                 .Include(a => a.StatusHistory)
                 .Where(a => a.Status != ApplicationStatus.Deleted)
                 .AsQueryable();
 
-            // Фильтры
+            // Применяем фильтры
             if (filter.DateFrom.HasValue)
                 query = query.Where(a => a.ApplicationDate >= filter.DateFrom);
 
@@ -47,15 +38,19 @@ namespace TransportRequestSystem.Controllers
             if (!string.IsNullOrEmpty(filter.OrganizationUnit))
                 query = query.Where(a => a.OrganizationUnit.Contains(filter.OrganizationUnit));
 
-            if (filter.SelectedStatuses != null && filter.SelectedStatuses.Any())
+            if (filter.SelectedStatuses?.Any() == true)
                 query = query.Where(a => filter.SelectedStatuses.Contains(a.Status));
 
-            var applications = await query.OrderByDescending(a => a.CreatedAt).ToListAsync();
+            var applications = await query
+                .OrderByDescending(a => a.CreatedAt)
+                .ToListAsync();
 
             ViewBag.Filter = filter ?? new ApplicationFilter();
+            ViewBag.Applications = applications;
             return View(applications);
         }
 
+        // Возвращает модальное окно для создания заявки
         public IActionResult GetCreateModel()
         {
             var model = new Application
@@ -64,101 +59,64 @@ namespace TransportRequestSystem.Controllers
                 ApplicationDate = DateTime.Today,
                 Status = ApplicationStatus.CreatedOrModified
             };
-
             return PartialView("_CreateModal", model);
         }
 
-        // GET: Создание заявки 
-        public IActionResult Create()
-        {
-            var application = new Application
-            {
-                Number = Application.GenerateNumber(),
-                Status = ApplicationStatus.CreatedOrModified,
-                ApplicationDate = DateTime.Today
-            };
-
-            // Если это AJAX запрос, возвращаем частичное представление
-            if (Request.Headers["X-Requested-With"] == "XMLHttpRequest")
-            {
-                return PartialView("_CreateModal", application);
-            }
-
-            return View(application);
-        }
-        // POST: Создание заявки
+        // Создание новой заявки
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Application application)
+        public async Task<IActionResult> Create(Application application, string actionType)
         {
             try
             {
-                // Генерируем номер ПЕРВЫМ ДЕЛОМ
-                if (string.IsNullOrEmpty(application.Number))
-                {
-                    application.Number = Application.GenerateNumber();
-                    Console.WriteLine($"Generated number: {application.Number}");
-                }
-
                 application.Id = 0;
-
-                // Конвертируем даты
-                application.ApplicationDate = DateTime.SpecifyKind(application.ApplicationDate, DateTimeKind.Utc);
-                if (application.TripStart.HasValue)
-                    application.TripStart = DateTime.SpecifyKind(application.TripStart.Value, DateTimeKind.Utc);
-                if (application.TripEnd.HasValue)
-                    application.TripEnd = DateTime.SpecifyKind(application.TripEnd.Value, DateTimeKind.Utc);
-
+                application.Number = Application.GenerateNumber();
                 application.CreatedAt = DateTime.UtcNow;
-                application.Status = ApplicationStatus.CreatedOrModified;
-
-                // Проверяем ModelState ПОСЛЕ установки номера
-                if (!ModelState.IsValid)
+                application.Status = actionType switch
                 {
-                    var errors = ModelState.Values.SelectMany(v => v.Errors)
-                                                  .Select(e => e.ErrorMessage);
-                    Console.WriteLine("ModelState errors: " + string.Join(", ", errors));
-                    TempData["Error"] = "Ошибка валидации: " + string.Join(", ", errors);
-                    return RedirectToAction(nameof(Index));
-                }
+                    "approve" => ApplicationStatus.Approved,
+                    "reject" => ApplicationStatus.RejectedByDispatcher,
+                    _ => ApplicationStatus.CreatedOrModified
+                };
 
                 _context.Applications.Add(application);
                 await _context.SaveChangesAsync();
 
-                Console.WriteLine($"SUCCESS! Saved application with ID: {application.Id}");
-                TempData["Success"] = $"Заявка {application.Number} успешно создана!";
+                // Запись в историю статусов
+                var history = new StatusHistory
+                {
+                    ApplicationId = application.Id,
+                    NewStatus = application.Status.ToString(),
+                    ChangedBy = User.Identity.Name ?? "System",
+                    ChangedDate = DateTime.Now
+                };
+                _context.StatusHistory.Add(history);
+                await _context.SaveChangesAsync();
+
+                TempData["Success"] = $"Заявка {application.Number} создана!";
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error: {ex.Message}");
-                if (ex.InnerException != null)
-                    Console.WriteLine($"Inner: {ex.InnerException.Message}");
                 TempData["Error"] = $"Ошибка: {ex.Message}";
             }
 
             return RedirectToAction(nameof(Index));
         }
 
-
-        // Редактирование заявки (GET)
+        // Получение данных заявки для редактирования
         public async Task<IActionResult> Edit(int id)
         {
             var application = await _context.Applications.FindAsync(id);
-            if (application == null)
-                return NotFound();
-
-            return Json(application); // Возвращаем JSON
+            return application == null ? NotFound() : Json(application);
         }
 
-        // Редактирование заявки (POST)
+        // Сохранение изменений заявки
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Application application)
+        public async Task<IActionResult> Edit(int id, Application application, string actionType)
         {
             if (id != application.Id)
                 return NotFound();
-            ModelState.Remove("Number");
-            ModelState.Remove("Status");
 
             try
             {
@@ -166,9 +124,9 @@ namespace TransportRequestSystem.Controllers
                 if (existingApp == null)
                     return NotFound();
 
+                var oldStatus = existingApp.Status;
+
                 // Обновляем поля
-                existingApp.Number = application.Number; 
-                existingApp.Status = application.Status;
                 existingApp.ApplicationDate = application.ApplicationDate;
                 existingApp.TripStart = application.TripStart;
                 existingApp.TripEnd = application.TripEnd;
@@ -176,9 +134,9 @@ namespace TransportRequestSystem.Controllers
                 existingApp.ResponsiblePerson = application.ResponsiblePerson;
                 existingApp.Phone = application.Phone;
                 existingApp.Purpose = application.Purpose;
-                existingApp.Passengers = application.Passengers;
+                existingApp.Passengers = application.Passengers ?? string.Empty;
                 existingApp.Route = application.Route;
-                existingApp.Notes = application.Notes;
+                existingApp.Notes = application.Notes ?? string.Empty;
                 existingApp.DispatcherName = application.DispatcherName;
                 existingApp.DispatcherPhone = application.DispatcherPhone;
                 existingApp.DriverName = application.DriverName;
@@ -189,36 +147,57 @@ namespace TransportRequestSystem.Controllers
                 existingApp.DispatcherNotes = application.DispatcherNotes;
                 existingApp.UpdatedAt = DateTime.UtcNow;
 
+                // Обновляем статус если нужно
+                if (actionType == "approve")
+                    existingApp.Status = ApplicationStatus.Approved;
+                else if (actionType == "reject")
+                    existingApp.Status = ApplicationStatus.RejectedByDispatcher;
+
+                // Если статус изменился, добавляем запись в историю
+                if (oldStatus != existingApp.Status)
+                {
+                    var history = new StatusHistory
+                    {
+                        ApplicationId = existingApp.Id,
+                        OldStatus = oldStatus.ToString(),
+                        NewStatus = existingApp.Status.ToString(),
+                        ChangedBy = User.Identity.Name ?? "System",
+                        ChangedDate = DateTime.Now
+                    };
+                    _context.StatusHistory.Add(history);
+                }
+
                 await _context.SaveChangesAsync();
-                TempData["Success"] = "Заявка обновлена!";
+                TempData["Success"] = $"Заявка {existingApp.Number} обновлена!";
             }
             catch (Exception ex)
             {
-                TempData["Error"] = ex.Message;
+                TempData["Error"] = $"Ошибка: {ex.Message}";
             }
 
             return RedirectToAction(nameof(Index));
         }
-        // Удаление заявки
-        [HttpPost]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var application = await _context.Applications.FindAsync(id);
-            if (application == null)
-                return NotFound();
 
-            var oldStatus = application.Status.ToString();
-            application.Status = ApplicationStatus.Deleted;
-            application.UpdatedAt = DateTime.Now;
+        // Удаление заявки (soft delete) удалено до востребования
+        //[HttpPost]
+        //public async Task<IActionResult> Delete(int id)
+        //{
+        //    var application = await _context.Applications.FindAsync(id);
+        //    if (application == null)
+        //        return NotFound();
 
-            await AddStatusHistory(id, oldStatus, "Удалена", "Система");
-            await _context.SaveChangesAsync();
+        //    var oldStatus = application.Status.ToString();
+        //    application.Status = ApplicationStatus.Deleted;
+        //    application.UpdatedAt = DateTime.Now;
 
-            TempData["Success"] = "Заявка удалена!";
-            return RedirectToAction(nameof(Index));
-        }
+        //    await AddStatusHistory(id, oldStatus, "Удалена", "Система");
+        //    await _context.SaveChangesAsync();
 
-        // Изменение статуса
+        //    TempData["Success"] = "Заявка удалена!";
+        //    return RedirectToAction(nameof(Index));
+        //}
+
+        // Изменение статуса заявки
         [HttpPost]
         public async Task<IActionResult> ChangeStatus(int id, ApplicationStatus status)
         {
@@ -237,7 +216,7 @@ namespace TransportRequestSystem.Controllers
             return RedirectToAction(nameof(Edit), new { id });
         }
 
-        // Вспомогательный метод для истории статусов
+        // Вспомогательный метод для добавления записи в историю
         private async Task AddStatusHistory(int appId, string oldStatus, string newStatus, string changedBy)
         {
             var history = new StatusHistory
@@ -248,9 +227,8 @@ namespace TransportRequestSystem.Controllers
                 ChangedBy = changedBy,
                 ChangedDate = DateTime.Now
             };
-
             _context.StatusHistory.Add(history);
+            await _context.SaveChangesAsync();
         }
-
     }
 }
