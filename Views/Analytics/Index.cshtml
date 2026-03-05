@@ -1,0 +1,311 @@
+﻿@model List<TransportRequestSystem.Models.Application>
+@using TransportRequestSystem.Models
+@{
+    ViewData["Title"] = "Аналитика и отчеты";
+    var dateFrom = ViewBag.DateFrom as DateTime? ?? DateTime.Today.AddDays(-30);
+    var dateTo = ViewBag.DateTo as DateTime? ?? DateTime.Today;
+}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
+</head>
+<body>
+    <!-- Навигация -->
+    <nav class="navbar-custom">
+        <div class="container d-flex justify-content-center">
+            <a href="/applications" class="nav-btn">Управление заявками</a>
+            <a href="/analytics" class="nav-btn" >Аналитика</a>
+            <a href="/create" class="nav-btn">Подать заявку</a>
+            <a href="#" class="nav-btn">Перечень заявок</a>
+        </div>
+    </nav>
+
+    <!-- Основной контент -->
+    <div class="container mt-4 main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>Аналитика и отчеты</h1>
+            <div class="d-flex gap-2">
+                <button type="button" class="btn btn-base" onclick="exportReport()">
+                    <i></i> Excel отчет
+                </button>
+            </div>
+        </div>
+
+        <!-- Фильтр по дате -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form method="get" class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Дата с</label>
+                        <input type="date" name="dateFrom" class="form-control" value="@dateFrom.ToString("yyyy-MM-dd")">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Дата по</label>
+                        <input type="date" name="dateTo" class="form-control" value="@dateTo.ToString("yyyy-MM-dd")">
+                    </div>
+                    <div class="col-md-4 d-flex align-items-end">
+                        <button type="submit" class="btn btn-base me-2">Применить</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Карточки с основными показателями -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h2>@ViewBag.TotalApps</h2>
+                    <p>Всего заявок</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h2>@ViewBag.AvgTime ч</h2>
+                    <p>Среднее время</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h2>@Model.Count(a => a.Status == ApplicationStatus.Completed)</h2>
+                    <p>Выполнено</p>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <h2>@Model.Count(a => a.Status == ApplicationStatus.InProgress)</h2>
+                    <p>В работе</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Графики -->
+        <div class="row">
+            <div class="col-md-8 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        Динамика заявок по дням
+                    </div>
+                    <div class="card-body">
+                        <canvas id="dailyChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        Статусы
+                    </div>
+                    <div class="card-body">
+                        <canvas id="statusChart" height="300"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                       Популярный транспорт
+                    </div>
+                    <div class="card-body">
+                        <canvas id="vehicleChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        Последние заявки
+                    </div>
+                    <div class="card-body" style="max-height: 285px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>№</th>
+                                    <th>Дата</th>
+                                    <th style="border-right:none !important">Статус</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var app in Model.Take(10))
+                                {
+                                    <tr>
+                                        <td>@app.Number</td>
+                                        <td>@app.CreatedAt.ToString("dd.MM.yyyy")</td>
+                                        <td style="border-right:none !important">
+                                            <span class="badge-custom">@GetStatusName(app.Status)</span>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Форма для экспорта -->
+    <form id="exportForm" method="post" asp-action="ExportToExcel" style="display: none;">
+        <input type="hidden" name="DateFrom" value="@dateFrom" />
+        <input type="hidden" name="DateTo" value="@dateTo" />
+    </form>
+
+    <script>
+        // График по дням
+        const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+        new Chart(dailyCtx, {
+            type: 'line',
+            data: {
+                labels: [@Html.Raw(string.Join(",", ((Dictionary<string, int>)ViewBag.DailyStats).Keys.Select(k => $"'{k}'")))],
+                datasets: [{
+                    label: 'Количество заявок',
+                    data: [@string.Join(",", ((Dictionary<string, int>)ViewBag.DailyStats).Values)],
+                    borderColor: '#008EB9',
+                    backgroundColor: 'rgba(0, 142, 185, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        // Ёмкий график по статусам (горизонтальная полоса)
+        const statusCtx = document.getElementById('statusChart').getContext('2d');
+
+        // Группируем похожие статусы для компактности
+        const statusMap = {
+            'Создана/Изменена': 'Создана',
+            'Утверждена': 'Утверждена',
+            'Исполняется': 'Исполняется',
+            'Исполнена': 'Исполнена',
+            'Не исполнена': 'Не исполнена',
+            'Отклонена диспетчером': 'Отклонена',
+            'Отклонена руководителем': 'Отклонена',
+            'Назначено ТС': 'Назначено ТС',
+            'Удалена': 'Удалена'
+        };
+
+        // Получаем данные из ViewBag и группируем
+        const rawStatusData = @Html.Raw(Json.Serialize(ViewBag.StatusStats));
+        const groupedData = {};
+
+        for (const [key, value] of Object.entries(rawStatusData)) {
+            const groupKey = statusMap[key] || key;
+            groupedData[groupKey] = (groupedData[groupKey] || 0) + value;
+        }
+
+        // Сортируем по убыванию
+        const sortedStatuses = Object.entries(groupedData)
+            .sort((a, b) => b[1] - a[1]);
+
+        new Chart(statusCtx, {
+            type: 'bar',
+            data: {
+                labels: sortedStatuses.map(item => item[0]),
+                datasets: [{
+                    label: 'Количество',
+                    data: sortedStatuses.map(item => item[1]),
+                    backgroundColor: [
+                        '#008EB9',
+                        '#28a745',
+                        '#ffc107',
+                        '#dc3545',
+                        '#17a2b8',
+                        '#6c757d'
+                    ],
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                indexAxis: 'y', // Горизонтальные столбцы
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(0, 0, 0, 0.1)'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            display: false
+                        }
+                    }
+                }
+            }
+        });
+
+        // График по транспорту
+        const vehicleCtx = document.getElementById('vehicleChart').getContext('2d');
+        new Chart(vehicleCtx, {
+            type: 'bar',
+            data: {
+                labels: [@Html.Raw(string.Join(",", ((Dictionary<string, int>)ViewBag.VehicleStats).Keys.Take(5).Select(k => $"'{k}'")))],
+                datasets: [{
+                    label: 'Количество поездок',
+                    data: [@string.Join(",", ((Dictionary<string, int>)ViewBag.VehicleStats).Values.Take(5))],
+                    backgroundColor: '#008EB9',
+                    borderRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+
+        function exportReport() {
+            document.getElementById('exportForm').submit();
+        }
+    </script>
+</body>
+</html>
+
+@functions {
+    public string GetStatusName(ApplicationStatus status)
+    {
+        return status switch
+        {
+            ApplicationStatus.CreatedOrModified => "Создана",
+            ApplicationStatus.Approved => "Утверждена",
+            ApplicationStatus.InProgress => "Исполняется",
+            ApplicationStatus.Completed => "Исполнена",
+            ApplicationStatus.RejectedByDispatcher => "Отклонена",
+            ApplicationStatus.RejectedByDirector => "Отклонена",
+            ApplicationStatus.AssignedToVehicle => "Назначено ТС",
+            ApplicationStatus.NotCompleted => "Не исполнена",
+            ApplicationStatus.Deleted => "Удалена",
+            _ => status.ToString()
+        };
+    }
+}

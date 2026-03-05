@@ -25,7 +25,7 @@
     <nav class="navbar-custom">
         <div class="container d-flex justify-content-center">
             <a href="#" class="nav-btn">Управление заявками</a>
-            <a href="/daily" class="nav-btn">Ежедневная сводка</a>
+            <a href="/analytics" class="nav-btn"> Аналитика</a>
             <a href="/create" class="nav-btn">Подать заявку</a>
             <a href="#" class="nav-btn">Перечень заявок</a>
         </div>
@@ -140,7 +140,7 @@
                             <th>Цель</th>
                             <th>Маршрут</th>
                             <th>Статус</th>
-                            <th></th>
+                            <th style="border-right:none !important"></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -156,7 +156,7 @@
                                 <td>
                                     <span class="badge @IndexModel.GetStatusBadgeClass(app.Status)">@IndexModel.GetDisplayName(app.Status)</span>
                                 </td>
-                                <td>
+                                <td style="border-right:none !important">
                                     <a href="#" class="btn btn-sm btn-outline-primary"
                                        onclick="loadApplication(@app.Id)" title="Редактировать">
                                         <i class="bi bi-pencil"></i>
