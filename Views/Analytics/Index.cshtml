@@ -34,9 +34,12 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1>Аналитика и отчеты</h1>
             <div class="d-flex gap-2">
-                <button type="button" class="btn btn-base" onclick="exportReport()">
-                    <i></i> Excel отчет
-                </button>
+                <a href="@Url.Action("ExportSimple", "Analytics", new { 
+                        dateFrom = ViewBag.DateFrom?.ToString("yyyy-MM-dd"), 
+                        dateTo = ViewBag.DateTo?.ToString("yyyy-MM-dd") 
+                    })" class="btn btn-base">
+                 Excel отчёт
+                </a>
             </div>
         </div>
 
@@ -156,9 +159,9 @@
     </div>
 
     <!-- Форма для экспорта -->
-    <form id="exportForm" method="post" asp-action="ExportToExcel" style="display: none;">
-        <input type="hidden" name="DateFrom" value="@dateFrom" />
-        <input type="hidden" name="DateTo" value="@dateTo" />
+    <form id="exportForm" method="post" asp-action="ExportToExcel">
+        <input type="hidden" name="DateFrom" value="@ViewBag.DateFrom?.ToString("yyyy-MM-dd")" />
+        <input type="hidden" name="DateTo" value="@ViewBag.DateTo?.ToString("yyyy-MM-dd")" />
     </form>
 
     <script>

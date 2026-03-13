@@ -5,6 +5,8 @@ using OfficeOpenXml.Style;
 using System.Drawing;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
+using OfficeOpenXml.Style;
+using System.Drawing;
 
 namespace TransportRequestSystem.Controllers
 {
@@ -67,131 +69,81 @@ namespace TransportRequestSystem.Controllers
         }
 
         // Экспорт в Excel
-        [HttpPost]
-        public async Task<IActionResult> ExportToExcel(ReportFilter filter)
+        [HttpGet]
+        public async Task<IActionResult> ExportSimple(DateTime? dateFrom, DateTime? dateTo)
         {
-            var query = _context.Applications
-                .Include(a => a.StatusHistory)
-                .Where(a => a.Status != ApplicationStatus.Deleted)
-                .AsQueryable();
-
-            if (filter.DateFrom.HasValue)
-                query = query.Where(a => a.CreatedAt >= filter.DateFrom);
-
-            if (filter.DateTo.HasValue)
-                query = query.Where(a => a.CreatedAt <= filter.DateTo.Value.AddDays(1));
-
-            if (!string.IsNullOrEmpty(filter.OrganizationUnit))
-                query = query.Where(a => a.OrganizationUnit.Contains(filter.OrganizationUnit));
-
-            if (filter.SelectedStatuses?.Any() == true)
-                query = query.Where(a => filter.SelectedStatuses.Contains(a.Status));
-
-            var applications = await query.OrderByDescending(a => a.CreatedAt).ToListAsync();
-
-            using var package = new ExcelPackage();
-            var worksheet = package.Workbook.Worksheets.Add("Заявки");
-
-            // Заголовки
-            worksheet.Cells[1, 1].Value = "№ заявки";
-            worksheet.Cells[1, 2].Value = "Дата создания";
-            worksheet.Cells[1, 3].Value = "Статус";
-            worksheet.Cells[1, 4].Value = "Организация";
-            worksheet.Cells[1, 5].Value = "Ответственный";
-            worksheet.Cells[1, 6].Value = "Телефон";
-            worksheet.Cells[1, 7].Value = "Цель";
-            worksheet.Cells[1, 8].Value = "Маршрут";
-            worksheet.Cells[1, 9].Value = "Пассажиры";
-            worksheet.Cells[1, 10].Value = "Водитель";
-            worksheet.Cells[1, 11].Value = "Транспорт";
-            worksheet.Cells[1, 12].Value = "Дата поездки";
-            worksheet.Cells[1, 13].Value = "Примечание";
-
-            // Стиль заголовков
-            using (var range = worksheet.Cells[1, 1, 1, 13])
+            try
             {
-                range.Style.Font.Bold = true;
-                range.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                range.Style.Fill.BackgroundColor.SetColor(Color.LightBlue);
-                range.Style.Border.BorderAround(ExcelBorderStyle.Thin);
-            }
+                var from = dateFrom ?? DateTime.Today.AddDays(-30);
+                var to = dateTo ?? DateTime.Today;
 
-            // Данные
-            for (int i = 0; i < applications.Count; i++)
-            {
-                var app = applications[i];
-                int row = i + 2;
+                // Получаем данные
+                var applications = await _context.Applications
+                    .Where(a => a.Status != ApplicationStatus.Deleted)
+                    .Where(a => a.CreatedAt >= from && a.CreatedAt <= to.AddDays(1))
+                    .OrderByDescending(a => a.CreatedAt)
+                    .ToListAsync();
 
-                worksheet.Cells[row, 1].Value = app.Number;
-                worksheet.Cells[row, 2].Value = app.CreatedAt.ToString("dd.MM.yyyy HH:mm");
-                worksheet.Cells[row, 3].Value = GetStatusName(app.Status);
-                worksheet.Cells[row, 4].Value = app.OrganizationUnit;
-                worksheet.Cells[row, 5].Value = app.ResponsiblePerson;
-                worksheet.Cells[row, 6].Value = app.Phone;
-                worksheet.Cells[row, 7].Value = app.Purpose;
-                worksheet.Cells[row, 8].Value = app.Route;
-                worksheet.Cells[row, 9].Value = app.Passengers;
-                worksheet.Cells[row, 10].Value = app.DriverName;
-                worksheet.Cells[row, 11].Value = $"{app.VehicleBrand} {app.VehicleNumber}";
-                worksheet.Cells[row, 12].Value = app.TripStart?.ToString("dd.MM.yyyy HH:mm") ?? "-";
-                worksheet.Cells[row, 13].Value = app.Notes;
-
-                // Альтернативная подсветка строк
-                if (i % 2 == 0)
+                // Проверяем, есть ли данные
+                if (!applications.Any())
                 {
-                    worksheet.Cells[row, 1, row, 13].Style.Fill.PatternType = ExcelFillStyle.Solid;
-                    worksheet.Cells[row, 1, row, 13].Style.Fill.BackgroundColor.SetColor(Color.LightGray);
+                    TempData["Error"] = "Нет данных за выбранный период";
+                    return RedirectToAction(nameof(Index));
                 }
-            }
 
-            // Авто-подбор ширины колонок
-            worksheet.Cells.AutoFitColumns();
+                using var package = new ExcelPackage();
+                var worksheet = package.Workbook.Worksheets.Add("Заявки");
 
-            // Создаем отдельный лист со статистикой
-            var statsSheet = package.Workbook.Worksheets.Add("Статистика");
+                // Заголовки
+                string[] headers = {
+            "№ заявки", "Дата создания", "Статус", "Организация",
+            "Ответственный", "Телефон", "Цель", "Маршрут",
+            "Пассажиры", "Водитель", "Транспорт", "Дата поездки", "Примечание"
+        };
 
-            statsSheet.Cells[1, 1].Value = "Показатель";
-            statsSheet.Cells[1, 2].Value = "Значение";
-            statsSheet.Cells[1, 1, 1, 2].Style.Font.Bold = true;
-
-            statsSheet.Cells[2, 1].Value = "Всего заявок";
-            statsSheet.Cells[2, 2].Value = applications.Count;
-
-            statsSheet.Cells[3, 1].Value = "Среднее время выполнения (часов)";
-            var completed = applications.Where(a => a.Status == ApplicationStatus.Completed && a.UpdatedAt.HasValue);
-            double avgHours = completed.Any()
-                ? completed.Average(a => (a.UpdatedAt.Value - a.CreatedAt).TotalHours)
-                : 0;
-            statsSheet.Cells[3, 2].Value = Math.Round(avgHours, 1);
-
-            statsSheet.Cells[4, 1].Value = "Период";
-            statsSheet.Cells[4, 2].Value = $"{filter.DateFrom:dd.MM.yyyy} - {filter.DateTo:dd.MM.yyyy}";
-
-            // Статистика по статусам
-            statsSheet.Cells[6, 1].Value = "Статус";
-            statsSheet.Cells[6, 2].Value = "Количество";
-            statsSheet.Cells[6, 1, 6, 2].Style.Font.Bold = true;
-
-            int statusRow = 7;
-            foreach (var status in Enum.GetValues<ApplicationStatus>())
-            {
-                var count = applications.Count(a => a.Status == status);
-                if (count > 0)
+                for (int i = 0; i < headers.Length; i++)
                 {
-                    statsSheet.Cells[statusRow, 1].Value = GetStatusName(status);
-                    statsSheet.Cells[statusRow, 2].Value = count;
-                    statusRow++;
+                    worksheet.Cells[1, i + 1].Value = headers[i];
+                    worksheet.Cells[1, i + 1].Style.Font.Bold = true;
                 }
+
+                // Данные
+                for (int i = 0; i < applications.Count; i++)
+                {
+                    var app = applications[i];
+                    int row = i + 2;
+
+                    worksheet.Cells[row, 1].Value = app.Number;
+                    worksheet.Cells[row, 2].Value = app.CreatedAt.ToString("dd.MM.yyyy HH:mm");
+                    worksheet.Cells[row, 3].Value = GetStatusName(app.Status);
+                    worksheet.Cells[row, 4].Value = app.OrganizationUnit;
+                    worksheet.Cells[row, 5].Value = app.ResponsiblePerson;
+                    worksheet.Cells[row, 6].Value = app.Phone;
+                    worksheet.Cells[row, 7].Value = app.Purpose;
+                    worksheet.Cells[row, 8].Value = app.Route;
+                    worksheet.Cells[row, 9].Value = app.Passengers;
+                    worksheet.Cells[row, 10].Value = app.DriverName;
+                    worksheet.Cells[row, 11].Value = string.IsNullOrEmpty(app.VehicleBrand) ? "-" : $"{app.VehicleBrand} {app.VehicleNumber}";
+                    worksheet.Cells[row, 12].Value = app.TripStart?.ToString("dd.MM.yyyy HH:mm") ?? "-";
+                    worksheet.Cells[row, 13].Value = app.Notes;
+                }
+
+                worksheet.Cells.AutoFitColumns();
+
+                // Формируем имя файла
+                string fileName = $"Заявки_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
+                byte[] fileContents = package.GetAsByteArray();
+
+                return File(fileContents, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
             }
-
-            statsSheet.Cells.AutoFitColumns();
-
-            // Формируем имя файла
-            string fileName = $"Заявки_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
-            byte[] fileContents = package.GetAsByteArray();
-
-            return File(fileContents, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Ошибка: {ex.Message}");
+                TempData["Error"] = $"Ошибка: {ex.Message}";
+                return RedirectToAction(nameof(Index));
+            }
         }
+
 
         // Экспорт краткого отчета
         [HttpPost]
