@@ -1,12 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
-using OfficeOpenXml.Style;
-using System.Drawing;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
-using OfficeOpenXml.Style;
-using System.Drawing;
+
 
 namespace TransportRequestSystem.Controllers
 {
@@ -142,79 +139,6 @@ namespace TransportRequestSystem.Controllers
                 TempData["Error"] = $"Ошибка: {ex.Message}";
                 return RedirectToAction(nameof(Index));
             }
-        }
-
-
-        // Экспорт краткого отчета
-        [HttpPost]
-        public async Task<IActionResult> ExportSummary(ReportFilter filter)
-        {
-            var query = _context.Applications
-                .Where(a => a.Status != ApplicationStatus.Deleted)
-                .AsQueryable();
-
-            if (filter.DateFrom.HasValue)
-                query = query.Where(a => a.CreatedAt >= filter.DateFrom);
-
-            if (filter.DateTo.HasValue)
-                query = query.Where(a => a.CreatedAt <= filter.DateTo.Value.AddDays(1));
-
-            var applications = await query.ToListAsync();
-
-            using var package = new ExcelPackage();
-            var worksheet = package.Workbook.Worksheets.Add("Сводка");
-
-            // Заголовок отчета
-            worksheet.Cells[1, 1].Value = "Отчет по заявкам";
-            worksheet.Cells[1, 1].Style.Font.Size = 16;
-            worksheet.Cells[1, 1].Style.Font.Bold = true;
-            worksheet.Cells[2, 1].Value = $"Период: {filter.DateFrom:dd.MM.yyyy} - {filter.DateTo:dd.MM.yyyy}";
-            worksheet.Cells[2, 1].Style.Font.Size = 12;
-
-            // Основные показатели
-            worksheet.Cells[4, 1].Value = "Основные показатели";
-            worksheet.Cells[4, 1].Style.Font.Bold = true;
-
-            worksheet.Cells[5, 1].Value = "Всего заявок:";
-            worksheet.Cells[5, 2].Value = applications.Count;
-
-            worksheet.Cells[6, 1].Value = "Выполнено:";
-            worksheet.Cells[6, 2].Value = applications.Count(a => a.Status == ApplicationStatus.Completed);
-
-            worksheet.Cells[7, 1].Value = "В работе:";
-            worksheet.Cells[7, 2].Value = applications.Count(a => a.Status == ApplicationStatus.InProgress);
-
-            worksheet.Cells[8, 1].Value = "Ожидают:";
-            worksheet.Cells[8, 2].Value = applications.Count(a => a.Status == ApplicationStatus.CreatedOrModified);
-
-            worksheet.Cells[9, 1].Value = "Отменено:";
-            worksheet.Cells[9, 2].Value = applications.Count(a => a.Status == ApplicationStatus.RejectedByDispatcher
-                                                                 || a.Status == ApplicationStatus.RejectedByDirector);
-
-            // Статистика по транспорту
-            var vehicleGroups = applications
-                .Where(a => !string.IsNullOrEmpty(a.VehicleBrand))
-                .GroupBy(a => a.VehicleBrand)
-                .Select(g => new { Brand = g.Key, Count = g.Count() })
-                .OrderByDescending(x => x.Count)
-                .Take(5);
-
-            worksheet.Cells[11, 1].Value = "Популярный транспорт";
-            worksheet.Cells[11, 1].Style.Font.Bold = true;
-
-            int vehicleRow = 12;
-            foreach (var item in vehicleGroups)
-            {
-                worksheet.Cells[vehicleRow, 1].Value = item.Brand;
-                worksheet.Cells[vehicleRow, 2].Value = item.Count;
-                vehicleRow++;
-            }
-
-            worksheet.Cells.AutoFitColumns();
-
-            byte[] fileContents = package.GetAsByteArray();
-            return File(fileContents, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                $"Сводка_{DateTime.Now:yyyyMMdd}.xlsx");
         }
 
         private string GetStatusName(ApplicationStatus status)

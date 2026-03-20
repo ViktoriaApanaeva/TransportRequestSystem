@@ -158,11 +158,6 @@
         </div>
     </div>
 
-    <!-- Форма для экспорта -->
-    <form id="exportForm" method="post" asp-action="ExportToExcel">
-        <input type="hidden" name="DateFrom" value="@ViewBag.DateFrom?.ToString("yyyy-MM-dd")" />
-        <input type="hidden" name="DateTo" value="@ViewBag.DateTo?.ToString("yyyy-MM-dd")" />
-    </form>
 
     <script>
         // График по дням
@@ -191,7 +186,7 @@
             }
         });
 
-        // Ёмкий график по статусам (горизонтальная полоса)
+        //график по статусам
         const statusCtx = document.getElementById('statusChart').getContext('2d');
 
         // Группируем похожие статусы для компактности
@@ -239,7 +234,7 @@
                 }]
             },
             options: {
-                indexAxis: 'y', // Горизонтальные столбцы
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {

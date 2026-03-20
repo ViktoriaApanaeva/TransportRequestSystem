@@ -64,7 +64,7 @@ h1 {
 
 .card {
     background-color: #FFF3DB;
-    border: 2px solid rgba(192, 156, 106, 1);
+    border: 3px solid rgba(192, 156, 106, 1);
 }
 
 .form-check-input:checked {
@@ -103,4 +103,425 @@ h1 {
 
 .btn-outline-primary:hover i {
     color: #fff !important;
+}
+
+/* ===== ДОБАВЛЯЕМ FLEX ДЛЯ АДАПТАЦИИ  ===== */
+.navbar-custom .container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.d-flex.justify-content-between {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.d-flex.gap-2 {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.card-body .row {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0 -10px;
+}
+
+.card-body [class*="col-"] {
+    padding: 0 10px;
+    box-sizing: border-box;
+}
+
+/* ===== АДАПТАЦИЯ ДЛЯ РАЗНЫХ ЭКРАНОВ ===== */
+
+/* Большие десктопы (1200px и выше) */
+@media (min-width: 1200px) {
+    .container {
+        max-width: 1140px;
+        margin: 0 auto;
+    }
+}
+
+/* Десктопы (992px - 1199px) */
+@media (min-width: 992px) and (max-width: 1199px) {
+    .container {
+        max-width: 960px;
+        margin: 0 auto;
+    }
+
+    .nav-btn {
+        margin: 10px 30px;
+    }
+}
+
+/* Планшеты (768px - 991px) */
+@media (min-width: 768px) and (max-width: 991px) {
+    .container {
+        max-width: 720px;
+        margin: 0 auto;
+    }
+
+    /* Навигация */
+    .nav-btn {
+        width: 160px;
+        margin: 10px 15px;
+        font-size: 14px;
+    }
+
+    /* Фильтры - 2 колонки */
+    .col-md-4 {
+        width: 50% !important;
+        max-width: 50% !important;
+        flex: 0 0 50% !important;
+    }
+
+    .col-md-6 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+    }
+
+    /* Чекбоксы - 2 колонки */
+    .row .col-md-4 {
+        width: 50% !important;
+        max-width: 50% !important;
+        flex: 0 0 50% !important;
+    }
+
+    /* Таблица */
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .table {
+        min-width: 700px;
+    }
+
+        .table td, .table th {
+            padding: 8px 5px;
+            font-size: 13px;
+        }
+}
+
+/* Маленькие планшеты (576px - 767px) */
+@media (min-width: 576px) and (max-width: 767px) {
+    .container {
+        max-width: 540px;
+        margin: 0 auto;
+    }
+
+    /* Навигация */
+    nav {
+        height: auto;
+        padding: 10px 0;
+    }
+
+    .navbar-custom .container {
+        gap: 10px;
+    }
+
+    .nav-btn {
+        width: 160px;
+        margin: 5px 10px;
+        font-size: 14px;
+    }
+
+    /* Шапка */
+    h1 {
+        font-size: 22px;
+        text-align: center;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 15px;
+    }
+
+    .d-flex.gap-2 {
+        justify-content: center;
+    }
+
+    .input-group {
+        width: 100% !important;
+    }
+
+    .btn-base {
+        width: 140px;
+    }
+
+    /* Фильтры - 1 колонка */
+    .col-md-4, .col-md-6 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+    }
+
+        .col-md-6.mb-3.d-flex {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px;
+        }
+
+            .col-md-6.mb-3.d-flex .btn-base {
+                width: 100%;
+            }
+
+    /* Чекбоксы - 2 колонки */
+    .row .col-md-4 {
+        width: 50% !important;
+        max-width: 50% !important;
+        flex: 0 0 50% !important;
+    }
+
+    /* Таблица */
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .table {
+        min-width: 650px;
+    }
+
+        .table td, .table th {
+            padding: 8px 5px;
+            font-size: 12px;
+        }
+
+    .btn-outline-primary {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+    }
+}
+
+/* Мобильные телефоны (до 575px) */
+@media (max-width: 575px) {
+    .container {
+        width: 100%;
+        padding: 0 15px;
+        box-sizing: border-box;
+    }
+
+    /* Навигация */
+    nav {
+        height: auto;
+        padding: 10px 0;
+    }
+
+    .navbar-custom .container {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .nav-btn {
+        width: 90%;
+        max-width: 250px;
+        margin: 3px 0 !important;
+        font-size: 14px;
+    }
+
+    /* Шапка */
+    h1 {
+        font-size: 20px;
+        text-align: center;
+    }
+
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 15px;
+    }
+
+    .d-flex.gap-2 {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .input-group {
+        width: 100% !important;
+    }
+
+    .btn-base {
+        width: 100% !important;
+    }
+
+    .searchButton {
+        width: 100% !important;
+    }
+
+    /* Фильтры */
+    .card-body {
+        padding: 15px;
+    }
+
+    .col-md-4, .col-md-6 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+        padding: 0 !important;
+    }
+
+        .col-md-6.mb-3.d-flex {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+            .col-md-6.mb-3.d-flex .btn-base {
+                width: 100%;
+            }
+
+    /* Чекбоксы - 1 колонка */
+    .row .col-md-4 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+    }
+
+    .d-flex.align-items-center.gap-3.mb-2 {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .btn-base.ms-4 {
+        margin-left: 0 !important;
+    }
+
+    /* Таблица */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        margin: 0 -15px;
+        width: calc(100% + 30px);
+    }
+
+    .table {
+        min-width: 600px;
+        font-size: 12px;
+    }
+
+        .table td, .table th {
+            padding: 8px 5px;
+            white-space: nowrap;
+        }
+
+    /* Модальное окно */
+    .modal-dialog {
+        margin: 10px;
+    }
+
+    .modal-body .row {
+        flex-direction: column;
+    }
+
+    .modal-body .col-md-6,
+    .modal-body .col-md-4 {
+        width: 100% !important;
+        max-width: 100% !important;
+        flex: 0 0 100% !important;
+    }
+}
+
+/* Очень маленькие телефоны (до 375px) */
+@media (max-width: 375px) {
+    .nav-btn {
+        width: 95%;
+        font-size: 13px;
+    }
+
+    h1 {
+        font-size: 18px;
+    }
+
+    .table {
+        min-width: 500px;
+        font-size: 11px;
+    }
+
+        .table td, .table th {
+            padding: 5px 3px;
+        }
+
+    .btn-outline-primary {
+        width: 28px;
+        height: 28px;
+    }
+
+        .btn-outline-primary i {
+            font-size: 14px;
+        }
+}
+
+/* Альбомная ориентация на мобильных */
+@media (max-width: 768px) and (orientation: landscape) {
+    nav {
+        height: 60px;
+    }
+
+    .navbar-custom .container {
+        flex-direction: row;
+    }
+
+    .nav-btn {
+        width: 150px;
+        margin: 5px 10px;
+    }
+
+    .table-responsive {
+        max-height: 300px;
+        overflow-y: auto;
+    }
+}
+
+/* ===== ДОПОЛНИТЕЛЬНЫЕ УЛУЧШЕНИЯ ===== */
+
+/* Убираем border-right у последней ячейки */
+.table td:last-child,
+.table th:last-child {
+    border-right: none !important;
+}
+
+/* Плавные переходы */
+.nav-btn, .btn-base, .searchButton, .btn-outline-primary {
+    transition: all 0.3s ease;
+}
+
+/* Улучшаем отображение таблицы */
+.table-responsive {
+    border-radius: 8px;
+    margin-top: 20px;
+}
+
+/* Центрируем кнопки в фильтрах */
+.col-md-6.mb-3.d-flex {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Добавляем отступы для карточки */
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+/* Улучшаем чекбоксы */
+.form-check {
+    margin-bottom: 8px;
+    padding-left: 25px;
+}
+
+.form-check-input {
+    margin-left: -25px;
 }

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace TransportRequestSystem.Controllers
 {
@@ -15,38 +16,48 @@ namespace TransportRequestSystem.Controllers
         }
 
         // Главная страница с фильтрами
-        public async Task<IActionResult> Index(ApplicationFilter filter, bool selectAll = false, bool reset = false)
+        public async Task<IActionResult> Index(DateTime? DateFrom, DateTime? DateTo, string OrganizationUnit, List<ApplicationStatus> SelectedStatuses,
+                                       bool reset = false, bool selectAll = false)
         {
             if (reset)
-                return RedirectToAction(nameof(Index));
-
+            {
+                return RedirectToAction("Index");
+            }
             if (selectAll)
-                filter.SelectedStatuses = Enum.GetValues<ApplicationStatus>().ToList();
+            {
+                SelectedStatuses = Enum.GetValues<ApplicationStatus>().Cast<ApplicationStatus>().ToList();
+            };
 
             var query = _context.Applications
                 .Include(a => a.StatusHistory)
-                .Where(a => a.Status != ApplicationStatus.Deleted)
                 .AsQueryable();
 
             // Применяем фильтры
-            if (filter.DateFrom.HasValue)
-                query = query.Where(a => a.ApplicationDate >= filter.DateFrom);
+            if (DateFrom.HasValue)
+                query = query.Where(a => a.ApplicationDate >= DateFrom.Value);
 
-            if (filter.DateTo.HasValue)
-                query = query.Where(a => a.ApplicationDate <= filter.DateTo);
+            if (DateTo.HasValue)
+                query = query.Where(a => a.ApplicationDate <= DateTo.Value);
 
-            if (!string.IsNullOrEmpty(filter.OrganizationUnit))
-                query = query.Where(a => a.OrganizationUnit.Contains(filter.OrganizationUnit));
+            if (!string.IsNullOrWhiteSpace(OrganizationUnit))
+                query = query.Where(a => a.OrganizationUnit.Contains(OrganizationUnit));
 
-            if (filter.SelectedStatuses?.Any() == true)
-                query = query.Where(a => filter.SelectedStatuses.Contains(a.Status));
+            if (SelectedStatuses != null && SelectedStatuses.Any())
+            {
+                query = query.Where(a => SelectedStatuses.Contains(a.Status));
+            }
 
-            var applications = await query
-                .OrderByDescending(a => a.CreatedAt)
-                .ToListAsync();
+            var applications = await query.ToListAsync();
 
-            ViewBag.Filter = filter ?? new ApplicationFilter();
-            ViewBag.Applications = applications;
+            var filter = new ApplicationFilter
+            {
+                DateFrom = DateFrom,
+                DateTo = DateTo,
+                OrganizationUnit = OrganizationUnit,
+                SelectedStatuses = SelectedStatuses ?? new List<ApplicationStatus>()
+            };
+            ViewBag.Filter = filter;
+
             return View(applications);
         }
 
@@ -71,7 +82,7 @@ namespace TransportRequestSystem.Controllers
             {
                 application.Id = 0;
                 application.Number = Application.GenerateNumber();
-                application.CreatedAt = DateTime.UtcNow;
+                application.CreatedAt = DateTime.Now;
                 application.Status = actionType switch
                 {
                     "approve" => ApplicationStatus.Approved,

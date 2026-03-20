@@ -153,6 +153,11 @@ namespace TransportRequestSystem.Models
 
         [Display(Name = "Статусы")]
         public List<ApplicationStatus> SelectedStatuses { get; set; } = new List<ApplicationStatus>();
+
+
+        // Флаги для действий
+        public bool Reset { get; set; }
+        public bool SelectAll { get; set; }
     }
 
     

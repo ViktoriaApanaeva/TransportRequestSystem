@@ -27,7 +27,6 @@
             <a href="#" class="nav-btn">Управление заявками</a>
             <a href="/analytics" class="nav-btn"> Аналитика</a>
             <a href="/create" class="nav-btn">Подать заявку</a>
-            <a href="#" class="nav-btn">Перечень заявок</a>
         </div>
     </nav>
 
@@ -57,7 +56,7 @@
         <!-- Фильтры -->
         <div class="card mb-4">
             <div class="card-body">
-                <form method="get" asp-action="Index">
+                <form method="get" asp-action="Index" autocomplete="off">
                     <div class="row">
                         <!-- Фильтр по дате -->
                         <div class="col-md-4 mb-3">
@@ -72,31 +71,29 @@
                             <input type="text" name="OrganizationUnit" class="form-control" value="@filter.OrganizationUnit">
                         </div>
 
-                        <!-- Кнопки управления фильтрами -->
                         <div class="col-md-6 mb-3 d-flex align-items-end gap-2">
-                            <button type="submit" class="btn btn-base">Обновить</button>
-                            <button type="submit"
-                                    name="reset"
-                                    value="true"
-                                    class="btn btn-base"
-                                    style="background-color:grey;">
-                                Сбросить
-                            </button>
+                        <button type="submit" class="btn btn-base">Обновить</button>
+                        <button type="button"
+                                class="btn btn-base"
+                                style="background-color:grey;"
+                                onclick="resetFilters()">
+                            Сбросить
+                        </button>
                         </div>
                     </div>
+                    
 
                     <!-- Фильтр по статусам -->
                     <div class="row mt-3">
                         <div class="col-12">
                             <div class="d-flex align-items-center gap-3 mb-2">
                                 <label class="fw-bold">Статус</label>
-                                <button type="submit"
-                                        name="selectAll"
-                                        value="true"
-                                        class="btn btn-base ms-4"
-                                        style="width:70px !important; height: 30px !important;">
-                                    Все
-                                </button>
+                                    <button type="button"
+                                            class="btn btn-base ms-4"
+                                            style="width:70px !important; height: 30px !important;"
+                                            onclick="selectAllStatuses()">
+                                        Все
+                                    </button>
                             </div>
                             <div class="row">
                                 @{
@@ -119,13 +116,12 @@
                                         }
                                     </div>
                                 }
-                            </div>
+                            </div>   
                         </div>
                     </div>
                 </form>
             </div>
-        </div>
-
+        </div> 
         <!-- Таблица заявок -->
         @if (Model.Any())
         {
@@ -187,6 +183,36 @@
     }
 
     <script>
+        function resetFilters() {
+            // Очищаем поля дат и организации
+            document.querySelector('input[name="DateFrom"]').value = '';
+            document.querySelector('input[name="DateTo"]').value = '';
+            document.querySelector('input[name="OrganizationUnit"]').value = '';
+
+            // Сбрасываем все чекбоксы статусов
+            document.querySelectorAll('input[name="SelectedStatuses"]').forEach(cb => cb.checked = false);
+
+            // Отправляем форму
+            document.querySelector('form').submit();
+        }
+
+        function selectAllStatuses() {
+            // Отмечаем все чекбоксы статусов
+            document.querySelectorAll('input[name="SelectedStatuses"]').forEach(cb => cb.checked = true);
+            let selectAllInput = document.querySelector('input[name="selectAll"]');
+            if (!selectAllInput) {
+                selectAllInput = document.createElement('input');
+                selectAllInput.type = 'hidden';
+                selectAllInput.name = 'selectAll';
+                selectAllInput.value = 'true';
+                document.querySelector('form').appendChild(selectAllInput);
+            } else {
+                selectAllInput.value = 'true';
+            }
+            // Отправляем форму
+            document.querySelector('form').submit();
+        }
+
         // Клиентский поиск по таблице
         document.getElementById('searchButton').onclick = filterTable;
         document.getElementById('searchInput').addEventListener('keypress', function(e) {
@@ -201,29 +227,89 @@
             });
         }
 
-        // Загрузка данных заявки в модальное окно для редактирования
-        function loadApplication(id) {
+                function loadApplication(id) {
             fetch('/Applications/Edit/' + id)
                 .then(response => response.json())
                 .then(data => {
+
+                    // Соответствие между полями JSON и полями формы
+                    const fieldMapping = {
+                        // JSON поле : Имя поля в форме
+                        'number': 'Number',
+                        'applicationDate': 'ApplicationDate',
+                        'tripStart': 'TripStart',
+                        'tripEnd': 'TripEnd',
+                        'organizationUnit': 'OrganizationUnit',
+                        'responsiblePerson': 'ResponsiblePerson',
+                        'phone': 'Phone',
+                        'purpose': 'Purpose',
+                        'route': 'Route',
+                        'passengers': 'Passengers',
+                        'notes': 'Notes',
+                        'dispatcherName': 'DispatcherName',
+                        'dispatcherPhone': 'DispatcherPhone',
+                        'driverName': 'DriverName',
+                        'driverPhone': 'DriverPhone',
+                        'vehicleBrand': 'VehicleBrand',
+                        'vehicleNumber': 'VehicleNumber',
+                        'vehicleColor': 'VehicleColor',
+                        'dispatcherNotes': 'DispatcherNotes'
+                    };
+
                     // Заполняем поля формы
-                    Object.keys(data).forEach(key => {
-                        const input = document.querySelector(`#createModal [name="${key}"]`);
+                    Object.keys(fieldMapping).forEach(jsonField => {
+                        const formFieldName = fieldMapping[jsonField];
+                        const input = document.querySelector(`#createModal [name="${formFieldName}"]`);
+
                         if (input) {
-                            if (key === 'applicationDate') {
-                                input.value = data[key].substring(0, 10);
-                            } else {
-                                input.value = data[key] || '';
+                            // Преобразуем даты в формат для input
+                            let value = data[jsonField];
+
+                            if (jsonField.includes('Date') || jsonField.includes('trip')) {
+                                if (value) {
+                                    // Для date input нужно только YYYY-MM-DD
+                                    if (input.type === 'date') {
+                                        value = value.split('T')[0];
+                                    }
+                                    // Для datetime-local нужно YYYY-MM-DDTHH:MM
+                                    else if (input.type === 'datetime-local') {
+                                        value = value.replace('Z', '').slice(0, 16);
+                                    }
+                                }
                             }
+
+                            input.value = value || '';
+                        } else {
+                            console.log(`Поле ${formFieldName} не найдено в форме!`);
                         }
                     });
 
-                    // Обновляем заголовок и адрес отправки
-                    document.querySelector('#createModal .modal-title').textContent = 'РЕДАКТИРОВАНИЕ ЗАЯВКИ';
-                    document.querySelector('#createModal form').action = '/Applications/Edit/' + id;
+                    // Устанавливаем action формы для редактирования
+                    const form = document.querySelector('#createModal form');
+                    form.action = '/Applications/Edit/' + id;
+                    form.method = 'post';
 
-                    // Показываем модальное окно
+                    // Добавляем скрытое поле с ID
+                    let idInput = form.querySelector('input[name="Id"]');
+                    if (!idInput) {
+                        idInput = document.createElement('input');
+                        idInput.type = 'hidden';
+                        idInput.name = 'Id';
+                        form.appendChild(idInput);
+                    }
+                    idInput.value = id;
+
+                    // Меняем заголовок модального окна
+                    const modalTitle = document.querySelector('#createModal .modal-title');
+                    if (modalTitle) {
+                        modalTitle.textContent = 'Редактирование заявки №' + data.number;
+                    }
+
                     new bootstrap.Modal(document.getElementById('createModal')).show();
+                })
+                .catch(error => {
+                    console.error('Ошибка:', error);
+                    alert('Не удалось загрузить данные заявки');
                 });
         }
     </script>
