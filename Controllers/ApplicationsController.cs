@@ -1,11 +1,12 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
+using Microsoft.AspNetCore.Authorization;
 namespace TransportRequestSystem.Controllers
 {
+    [Authorize]
     public class ApplicationsController : Controller
     {
         private readonly ApplicationDbContext _context;

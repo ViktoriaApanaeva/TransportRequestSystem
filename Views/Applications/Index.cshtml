@@ -23,13 +23,34 @@
 <body>
     <!-- Навигация -->
     <nav class="navbar-custom">
-        <div class="container d-flex justify-content-center">
-            <a href="#" class="nav-btn">Управление заявками</a>
-            <a href="/analytics" class="nav-btn"> Аналитика</a>
-            <a href="/create" class="nav-btn">Подать заявку</a>
+        <div class="container d-flex justify-content-between align-items-center">
+            <!-- Левые кнопки -->
+            <div class="d-flex flex-wrap" style="gap: 10px;">
+                <a href="/" class="nav-btn">Управление заявками</a>
+                <a href="/analytics" class="nav-btn">Аналитика</a>
+                <a href="/create" class="nav-btn">Подать заявку</a>
+            </div>
+
+            <!-- Правая часть - пользователь -->
+            <div class="d-flex align-items-center gap-2">
+                @if (User.Identity.IsAuthenticated)
+                {
+                    <span class="text-white small">@User.Identity.Name</span>
+                    <a href="/Account/Logout" class="btn btn-sm"
+                       style="background-color: #C09C6A; color: white; border-radius: 10px;">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </a>
+                }
+                else
+                {
+                    <a href="/Account/Login" class="btn btn-sm"
+                       style="background-color: #C09C6A; color: white; border-radius: 10px;">
+                        <i class="bi bi-box-arrow-in-right"></i> Войти
+                    </a>
+                }
+            </div>
         </div>
     </nav>
-
     <!-- Основной контент -->
     <div class="container mt-4">
         <!-- Шапка с заголовком и поиском -->
