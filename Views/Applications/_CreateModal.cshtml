@@ -8,7 +8,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
-            <form action="/Applications/Create" method="post">
+            <form action="/Applications/Create" method="post" enctype="multipart/form-data">
                 @Html.AntiForgeryToken()
 
                 <div class="modal-body">
