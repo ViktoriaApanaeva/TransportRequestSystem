@@ -4,12 +4,12 @@
     height: fit-content;
 }
 
-/* ===== ЗАГОЛОВОК ===== */
-.fc .fc-toolbar-title {
-    color: #010047;
-    font-size: 24px;
-    font-weight: 450;
-}
+    /* ===== ЗАГОЛОВОК ===== */
+    .fc .fc-toolbar-title {
+        color: #010047;
+        font-size: 24px;
+        font-weight: 450;
+    }
 
 /* ===== КНОПКИ КАЛЕНДАРЯ В СТРОКУ ===== */
 .fc-header-toolbar {
@@ -55,10 +55,10 @@
     transition: all 0.3s ease !important;
 }
 
-.fc .fc-button:hover {
-    background-color: #006688 !important;
-    transform: translateY(-2px);
-}
+    .fc .fc-button:hover {
+        background-color: #006688 !important;
+        transform: translateY(-2px);
+    }
 
 .fc .fc-button-active {
     background-color: #006688 !important;
@@ -81,11 +81,13 @@
     background-color: #FFF3DB !important;
     border: 1px solid #C09C6A !important;
 }
+
 .fc .fc-daygrid-day-frame {
     display: flex;
     flex-direction: column;
     height: 100% !important;
 }
+
 .fc .fc-daygrid-day:hover {
     background-color: #FFE8CD !important;
 }
@@ -104,10 +106,9 @@
     border: 2px solid #C09C6A !important;
 }
 
-.fc-day-today .fc-daygrid-day-number {
-    color: #008EB9 !important;
-}
-
+    .fc-day-today .fc-daygrid-day-number {
+        color: #008EB9 !important;
+    }
 
 /* ===== ВЫХОДНЫЕ ===== */
 .fc-day-sat .fc-daygrid-day-number,
@@ -118,60 +119,54 @@
 /* ===== СОБЫТИЯ ===== */
 .fc-event {
     font-size: 10px !important;
-    padding: 4px 8px !important;
+    padding: 2px 6px !important;
     margin: 2px 3px !important;
-    border-radius: 8px !important;
+    border-radius: 12px !important;
     border: none !important;
     cursor: pointer !important;
-    background-color: transparent !important;
-    transition: all 0.2s ease !important;
-    display: flex !important;
-    align-items: center !important;
-    gap: 6px !important;
-}
-
-/* Стиль для кастомных событий */
-.custom-event {
-    background-color: transparent !important;
-    border: none !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
 }
 
 .fc-event:hover {
-    background-color: rgba(0, 142, 185, 0.1) !important;
-    transform: translateX(2px);
+    transform: scale(1.02);
 }
 
-/* Убираем стандартные стили */
-.fc-daygrid-event {
-    background-color: transparent !important;
-    border: none !important;
-}
-
-.fc-daygrid-event-dot {
-    display: none !important;
-}
-
-/* высота для всех событий */
 .fc-daygrid-day-events {
     width: 100% !important;
     overflow-x: hidden !important;
     padding: 2px 3px !important;
     box-sizing: border-box !important;
 }
-
-.fc-daygrid-event-harness {
-    margin: 1px 0 !important;
+.custom-event-circle {
+    width: 10px !important;
+    height: 10px !important;
+    border-radius: 50% !important;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.1) !important;
+    vertical-align: middle !important;
 }
-
-/* Адаптация для мобильных устройств */
+.custom-event-wrapper {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    background: transparent !important;
+    line-height: 1 !important;
+}
+/* ===== АДАПТАЦИЯ ПОД МОБИЛЬНЫЕ ===== */
 @media (max-width: 768px) {
-    .fc-event {
-        padding: 2px 4px !important;
-        font-size: 9px !important;
+    .fc-header-toolbar {
+        flex-direction: column;
+        align-items: stretch;
     }
 
-    .fc-event span:first-child {
-        width: 6px !important;
-        height: 6px !important;
+    .fc .fc-toolbar-chunk {
+        justify-content: center;
+    }
+
+    .fc .fc-button-group {
+        flex-wrap: wrap;
+        justify-content: center;
     }
 }
+
