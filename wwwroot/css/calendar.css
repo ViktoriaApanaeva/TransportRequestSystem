@@ -153,6 +153,10 @@
     background: transparent !important;
     line-height: 1 !important;
 }
+.router-link-active {
+    background-color: #006688 !important;
+    border: 2px solid #C09C6A !important;
+}
 /* ===== АДАПТАЦИЯ ПОД МОБИЛЬНЫЕ ===== */
 @media (max-width: 768px) {
     .fc-header-toolbar {
