@@ -8,7 +8,6 @@ namespace TransportRequestSystem.Controllers.Api
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
     public class CalendarApiController : ControllerBase
     {
         private readonly ApplicationDbContext _context;
@@ -23,8 +22,6 @@ namespace TransportRequestSystem.Controllers.Api
         public async Task<IActionResult> GetEvents([FromQuery] DateTime start, [FromQuery] DateTime end)
         {
             var events = await _context.Applications
-                .Where(a => a.Status != ApplicationStatus.Deleted)
-                .Where(a => a.TripStart != null && a.TripStart >= start && a.TripStart <= end)
                 .Select(a => new
                 {
                     id = a.Id,
@@ -87,7 +84,6 @@ namespace TransportRequestSystem.Controllers.Api
             var end = start.AddDays(1);
 
             var applications = await _context.Applications
-                .Where(a => a.TripStart >= start && a.TripStart < end)
                 .OrderBy(a => a.TripStart)
                 .Select(a => new
                 {
