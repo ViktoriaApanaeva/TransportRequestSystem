@@ -44,22 +44,23 @@ namespace TransportRequestSystem.Controllers
             // Использование транспорта
             var vehicleStats = applications
                 .Where(a => !string.IsNullOrEmpty(a.VehicleBrand))
-                .GroupBy(a => $"{a.VehicleBrand} {a.VehicleNumber}")
+                .GroupBy(a => $"{a.VehicleBrand}")
                 .ToDictionary(g => g.Key, g => g.Count());
 
             // Среднее время выполнения
             var completedApps = applications
-                .Where(a => a.Status == ApplicationStatus.Completed && a.UpdatedAt.HasValue)
-                .Select(a => (a.UpdatedAt.Value - a.CreatedAt).TotalHours);
+                .Where(a => a.Status == ApplicationStatus.Completed && a.TripEnd.HasValue)
+                .Select(a => (a.TripEnd.Value - a.CreatedAt).TotalHours)
+                .ToList();
 
-            double avgTime = completedApps.Any() ? completedApps.Average() : 0;
+            double avgTime = completedApps.Any() ? Math.Round(completedApps.Average(), 1) : 0;
+            ViewBag.AvgTime = avgTime;
 
             ViewBag.DateFrom = dateFrom;
             ViewBag.DateTo = dateTo;
             ViewBag.DailyStats = dailyStats;
             ViewBag.StatusStats = statusStats;
             ViewBag.VehicleStats = vehicleStats;
-            ViewBag.AvgTime = Math.Round(avgTime, 1);
             ViewBag.TotalApps = applications.Count;
 
             return View(applications);

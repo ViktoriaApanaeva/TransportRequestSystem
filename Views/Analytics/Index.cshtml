@@ -60,7 +60,7 @@
             <div class="col-md-3">
                 <div class="stat-card">
                     <h2>@ViewBag.TotalApps</h2>
-                    <p>Всего заявок</p>
+                    <p>Всего</p>
                 </div>
             </div>
             <div class="col-md-3">
@@ -180,6 +180,7 @@
         });
 
         //график по статусам
+
         const statusCtx = document.getElementById('statusChart').getContext('2d');
 
         // Группируем похожие статусы для компактности
@@ -208,7 +209,7 @@
         const sortedStatuses = Object.entries(groupedData)
             .sort((a, b) => b[1] - a[1]);
 
-        new Chart(statusCtx, {
+        const chart = new Chart(statusCtx, {
             type: 'bar',
             data: {
                 labels: sortedStatuses.map(item => item[0]),
@@ -223,16 +224,42 @@
                         '#17a2b8',
                         '#6c757d'
                     ],
-                    borderRadius: 5
+                    borderRadius: 5,
+                    // Добавляем атрибуты для отображения чисел
+                    datalabels: {
+                        display: true,
+                        align: 'end',
+                        anchor: 'end',
+                        color: '#333',
+                        fontWeight: 'bold',
+                        font: {
+                            size: 12
+                        },
+                        formatter: function(value) {
+                            return value + ' шт';
+                        }
+                    }
                 }]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: {
+                    padding: {
+                        right: 30 
+                    }
+                },
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Количество: ${context.raw} заявок`;
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -240,16 +267,52 @@
                         beginAtZero: true,
                         grid: {
                             color: 'rgba(0, 0, 0, 0.1)'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Количество заявок',
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            }
                         }
                     },
                     y: {
                         grid: {
                             display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Статус',
+                            font: {
+                                weight: 'bold',
+                                size: 12
+                            }
                         }
                     }
                 }
             }
         });
+
+        // Рисуем числа поверх графика (альтернативный метод)
+        setTimeout(() => {
+            const canvas = statusCtx.canvas;
+            const bars = document.querySelectorAll('#statusChart');
+    
+            chart.data.datasets[0].data.forEach((value, index) => {
+                const meta = chart.getDatasetMeta(0);
+                const bar = meta.data[index];
+                if (bar && bar.y) {
+                    const ctx = statusCtx;
+                    ctx.save();
+                    ctx.font = 'bold 12px Roboto';
+                    ctx.fillStyle = '#333';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`${value}`, bar.x + 10, bar.y + 5);
+                    ctx.restore();
+                }
+            });
+        }, 500);
 
         // График по транспорту
         const vehicleCtx = document.getElementById('vehicleChart').getContext('2d');

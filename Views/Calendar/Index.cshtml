@@ -1,5 +1,5 @@
-﻿@{
-    ViewData["Title"] = "Календарь заявок";
+﻿﻿@{
+ViewData["Title"] = "Календарь заявок";
 }
 
 <!DOCTYPE html>
@@ -28,7 +28,30 @@
         <div class="container mt-4">
             <div class="card" style="border: 2px solid #C09C6A; border-radius: 20px; background-color:#FFF3DB;">
                 <div class="card-body p-4">
-                    <div ref="calendarContainer"></div>
+                    <div id="calendar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модальное окно для деталей -->
+    <div class="modal fade" id="eventModal" tabindex="-1" aria-labelledby="eventModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header" style="background-color: #C09C6A; color: white;">
+                    <h5 class="modal-title" id="eventModalLabel">Детали заявки</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="eventModalBody">
+                    <!-- Содержимое загружается через JS -->
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Загрузка...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
                 </div>
             </div>
         </div>
@@ -39,51 +62,39 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/ru.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
-
     <script>
-        const { createApp, ref, onMounted } = Vue;
-
-        const CalendarApp = {
-            setup() {
-                const calendarContainer = ref(null);
-                let calendarInstance = null;
-
-                const loadEvents = async (start, end) => {
-                    try {
-                        const response = await axios.get('/api/CalendarApi', {
-                            params: { start: start.toISOString(), end: end.toISOString() }
-                        });
-                        return response.data;
-                    } catch (error) {
-                        console.error('Ошибка загрузки событий:', error);
-                        return [];
-                    }
-                };
-
-                onMounted(() => {
-                    if (calendarContainer.value) {
-                        calendarInstance = new FullCalendar.Calendar(calendarContainer.value, {
-                            locale: 'ru',
-                            initialView: 'dayGridMonth',
-                            headerToolbar: {
-                                left: 'prev,next today',
-                                center: 'title',
-                                right: 'dayGridMonth,timeGridWeek'
-                            },
-                            buttonText: {
-                                today: 'Сегодня',
-                                month: 'Месяц',
-                                week: 'Неделя'
-                            },
-                            height: 'auto',
-                            firstDay: 1,
-                            displayEventTime: false,
-                            events: async (info, successCallback) => {
-                                const events = await loadEvents(info.start, info.end);
-                                const formattedEvents = events.map(event => ({
+        $(document).ready(function() {
+            // Инициализация календаря
+            var calendarEl = document.getElementById('calendar');
+            var calendar = new FullCalendar.Calendar(calendarEl, {
+                locale: 'ru',
+                initialView: 'dayGridMonth',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek'
+                },
+                buttonText: {
+                    today: 'Сегодня',
+                    month: 'Месяц',
+                    week: 'Неделя'
+                },
+                height: 'auto',
+                firstDay: 1,
+                displayEventTime: false,
+                events: function(info, successCallback, failureCallback) {
+                    $.ajax({
+                        url: '/api/CalendarApi',
+                        type: 'GET',
+                        data: {
+                            start: info.start.toISOString(),
+                            end: info.end.toISOString()
+                        },
+                        success: function(data) {
+                            var events = data.map(function(event) {
+                                return {
                                     id: event.id,
                                     title: event.title,
                                     start: event.start,
@@ -100,75 +111,152 @@
                                         statusName: event.statusName,
                                         statusColor: event.color
                                     }
-                                }));
-                                successCallback(formattedEvents);
-                            },
-                            eventDidMount: (info) => {
-                                // Получаем цвет статуса
-                                const statusColor = info.event.extendedProps.statusColor || '#6c757d';
-                                const eventTitle = info.event.title;
+                                };
+                            });
+                            successCallback(events);
+                        },
+                        error: function(error) {
+                            console.error('Ошибка загрузки событий:', error);
+                            successCallback([]);
+                        }
+                    });
+                },
+                eventDidMount: function(info) {
+                    var statusColor = info.event.extendedProps.statusColor || '#6c757d';
+                    var eventTitle = info.event.title;
 
-                                // Полностью очищаем элемент события
-                                while (info.el.firstChild) {
-                                    info.el.removeChild(info.el.firstChild);
-                                }
-
-                                // Убираем фон 
-                                info.el.style.backgroundColor = 'transparent';
-                                info.el.style.border = 'none';
-                                info.el.style.display = 'flex';
-                                info.el.style.alignItems = 'center';
-                                info.el.style.padding = '0';
-
-                                // Создаем обертку
-                                const wrapper = document.createElement('div');
-                                wrapper.className = 'custom-event-wrapper';
-
-                                // Создаем кружочек
-                                const circle = document.createElement('div');
-                                circle.style.width = '6px';      
-                                circle.style.height = '6px';
-                                circle.className = 'custom-event-circle';
-                                circle.style.backgroundColor = statusColor;
-                                circle.style.display = 'inline-block';
-
-                                // Создаем текст
-                                const text = document.createElement('span');
-                                text.className = 'custom-event-text';
-                                text.textContent = eventTitle;
-
-                                // Добавляем элементы в обертку
-                                wrapper.appendChild(circle);
-                                wrapper.appendChild(text);
-
-                                // Добавляем обертку в событие
-                                info.el.appendChild(wrapper);
-
-                                // Добавляем title для подсказки
-                                info.el.title = `${info.event.extendedProps.statusName || info.event.extendedProps.status}: ${eventTitle}`;
-                            },
-                            eventClick: (info) => {
-                                const event = info.event;
-                                alert(` Заявка ${event.extendedProps.number || event.title}\n\n` +
-                                      ` Дата: ${event.start.toLocaleString()}\n` +
-                                      ` Организация: ${event.extendedProps.organizationUnit || '—'}\n` +
-                                      ` Маршрут: ${event.extendedProps.route || '—'}\n` +
-                                      ` Водитель: ${event.extendedProps.driverName || 'не назначен'}\n` +
-                                      ` Статус: ${event.extendedProps.statusName || event.extendedProps.status}`);
-                            }
-                        });
-
-                        calendarInstance.render();
+                    // Полностью очищаем элемент события
+                    while (info.el.firstChild) {
+                        info.el.removeChild(info.el.firstChild);
                     }
+
+                    // Убираем фон
+                    info.el.style.backgroundColor = 'transparent';
+                    info.el.style.border = 'none';
+                    info.el.style.display = 'flex';
+                    info.el.style.alignItems = 'center';
+                    info.el.style.padding = '0';
+
+                    // Создаем обертку
+                    var wrapper = document.createElement('div');
+                    wrapper.className = 'custom-event-wrapper';
+
+                    // Создаем кружочек
+                    var circle = document.createElement('div');
+                    circle.style.width = '6px';
+                    circle.style.height = '6px';
+                    circle.className = 'custom-event-circle';
+                    circle.style.backgroundColor = statusColor;
+                    circle.style.display = 'inline-block';
+                    circle.style.borderRadius = '50%';
+                    circle.style.marginRight = '6px';
+
+                    // Создаем текст
+                    var text = document.createElement('span');
+                    text.className = 'custom-event-text';
+                    text.textContent = eventTitle;
+
+                    // Добавляем элементы в обертку
+                    wrapper.appendChild(circle);
+                    wrapper.appendChild(text);
+
+                    // Добавляем обертку в событие
+                    info.el.appendChild(wrapper);
+
+                    // Добавляем title для подсказки
+                    info.el.title = (info.event.extendedProps.statusName || info.event.extendedProps.status) + ': ' + eventTitle;
+                },
+                eventClick: function(info) {
+                    // Открываем модальное окно и загружаем детали
+                    $('#eventModal').modal('show');
+
+                    // Загружаем детали заявки
+                    $.ajax({
+                        url: '/api/CalendarApi/' + info.event.id,
+                        type: 'GET',
+                        success: function(data) {
+                            var modalBody = $('#eventModalBody');
+                            modalBody.html(`
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold">Основная информация</h6>
+                                        <table class="table table-sm table-bordered">
+                                            <tr><td style="width:40%"><strong>№ заявки:</strong></td><td>${data.number || '—'}</td></tr>
+                                            <tr><td><strong>Организация:</strong></td><td>${data.organizationUnit || '—'}</td></tr>
+                                            <tr><td><strong>Ответственный:</strong></td><td>${data.responsiblePerson || '—'}</td></tr>
+                                            <tr><td><strong>Телефон:</strong></td><td>${data.phone || '—'}</td></tr>
+                                            <tr><td><strong>Назначение:</strong></td><td>${data.purpose || '—'}</td></tr>
+                                            <tr><td><strong>Маршрут:</strong></td><td>${data.route || '—'}</td></tr>
+                                            <tr><td><strong>Пассажиры:</strong></td><td>${data.passengers || '—'}</td></tr>
+                                            <tr><td><strong>Примечания:</strong></td><td>${data.notes || '—'}</td></tr>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6 class="fw-bold">Транспорт и водитель</h6>
+                                        <table class="table table-sm table-bordered">
+                                            <tr><td style="width:40%"><strong>Водитель:</strong></td><td>${data.driverName || '—'}</td></tr>
+                                            <tr><td><strong>Телефон водителя:</strong></td><td>${data.driverPhone || '—'}</td></tr>
+                                            <tr><td><strong>Марка авто:</strong></td><td>${data.vehicleBrand || '—'}</td></tr>
+                                            <tr><td><strong>Госномер:</strong></td><td>${data.vehicleNumber || '—'}</td></tr>
+                                            <tr><td><strong>Цвет:</strong></td><td>${data.vehicleColor || '—'}</td></tr>
+                                            <tr><td><strong>Время поездки:</strong></td><td>${formatDateTime(data.start)} - ${formatDateTime(data.end)}</td></tr>
+                                            <tr><td><strong>Статус:</strong></td><td><span class="badge bg-${getStatusBadgeColor(data.status)}">${getStatusName(data.status)}</span></td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            `);
+                        },
+                        error: function(error) {
+                            console.error('Ошибка загрузки деталей:', error);
+                            $('#eventModalBody').html('<div class="alert alert-danger">Ошибка загрузки данных</div>');
+                        }
+                    });
+                }
+            });
+
+            calendar.render();
+
+            // Вспомогательные функции
+            function formatDateTime(dateTimeStr) {
+                if (!dateTimeStr) return '—';
+                var date = new Date(dateTimeStr);
+                return date.toLocaleString('ru-RU', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
                 });
-
-                return {
-                    calendarContainer
-                };
             }
-        };
 
-        createApp(CalendarApp).mount('#calendar-app');
+            function getStatusBadgeColor(status) {
+                var colors = {
+                    'Approved': 'success',
+                    'InProgress': 'warning',
+                    'Completed': 'info',
+                    'CreatedOrModified': 'secondary',
+                    'RejectedByDispatcher': 'danger',
+                    'RejectedByDirector': 'danger',
+                    'AssignedToVehicle': 'primary',
+                    'NotCompleted': 'dark'
+                };
+                return colors[status] || 'secondary';
+            }
+
+            function getStatusName(status) {
+                var names = {
+                    'Approved': 'Утверждена',
+                    'InProgress': 'Исполняется',
+                    'Completed': 'Исполнена',
+                    'CreatedOrModified': 'Создана',
+                    'RejectedByDispatcher': 'Отклонена диспетчером',
+                    'RejectedByDirector': 'Отклонена руководителем',
+                    'AssignedToVehicle': 'Назначено ТС',
+                    'NotCompleted': 'Не исполнена'
+                };
+                return names[status] || status;
+            }
+        });
     </script>
 </body>
 </html>
