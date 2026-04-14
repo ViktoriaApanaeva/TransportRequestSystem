@@ -1,10 +1,16 @@
-﻿@model TransportRequestSystem.Models.Application
+﻿@using Microsoft.AspNetCore.Identity
+@using TransportRequestSystem.Models
+
+@{
+    var isDispatcher = User.IsInRole("Dispatcher");
+}
 <link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" />
+
 <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header text-white">
-                <h5 class="modal-title fw-bold">СОЗДАНИЕ ЗАЯВКИ</h5>
+                <h5 class="modal-title fw-bold" id="createModalLabel">СОЗДАНИЕ ЗАЯВКИ</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
 
@@ -16,8 +22,9 @@
                     <input type="hidden" name="Id" value="0" />
                     <input type="hidden" name="Number" value="@Model.Number" />
                     <input type="hidden" name="Status" value="CreatedOrModified" />
+                    
                     <div class="row">
-                        <!-- Раздел заказчика -->
+                        <!-- Раздел заказчика - видят все -->
                         <div class="col-6 mb-3 border rounded p-3">
                             <h6 class="fw-bold text-primary mb-3">Раздел заказчика</h6>
                             <div class="row">
@@ -64,59 +71,69 @@
                             </div>
                         </div>
 
-                        <!-- Раздел диспетчера -->
-                        <div class="col-6 mb-3 border rounded p-3">
-                            <h6 class="fw-bold text-primary mb-3">Раздел диспетчера</h6>
-                            <div class="row">
-                                <div class="col-md-6 mb-2">
-                                    <label class="form-label fw-normal">ФИО диспетчера</label>
-                                    <input name="DispatcherName" class="form-control">
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <label class="form-label fw-normal">Телефон</label>
-                                    <input name="DispatcherPhone" class="form-control">
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <label class="form-label fw-normal">ФИО водителя ТС</label>
-                                    <input name="DriverName" class="form-control">
-                                </div>
-                                <div class="col-md-6 mb-2">
-                                    <label class="form-label fw-normal">Телефон</label>
-                                    <input name="DriverPhone" class="form-control">
-                                </div>
-                                <div class="col-md-4 mb-2">
-                                    <label class="form-label fw-normal">Марка ТС</label>
-                                    <input name="VehicleBrand" class="form-control">
-                                </div>
-                                <div class="col-md-4 mb-2">
-                                    <label class="form-label fw-normal">Гос. номер</label>
-                                    <input name="VehicleNumber" class="form-control">
-                                </div>
-                                <div class="col-md-4 mb-2">
-                                    <label class="form-label fw-normal">Цвет ТС</label>
-                                    <input name="VehicleColor" class="form-control">
-                                </div>
-                                <div class="col-12 mb-2">
-                                    <label class="form-label fw-normal">Примечание диспетчера</label>
-                                    <textarea name="DispatcherNotes" class="form-control" rows="2"></textarea>
-                                </div>
-                                <!-- История изменения статусов -->
-                                <div>
-                                    <h6 class="fw-normal text-primary mb-2">История изменения статусов</h6>
-                                    <div class="small text-muted mb-3">
-                                        История будет отображаться после создания заявки.
+                        <!-- Раздел диспетчера - видят только диспетчеры -->
+                        @if (isDispatcher)
+                        {
+                            <div class="col-6 mb-3 border rounded p-3">
+                                <h6 class="fw-bold text-primary mb-3">Раздел диспетчера</h6>
+                                <div class="row">
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label fw-normal">ФИО диспетчера</label>
+                                        <input name="DispatcherName" class="form-control">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label fw-normal">Телефон</label>
+                                        <input name="DispatcherPhone" class="form-control">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label fw-normal">ФИО водителя ТС</label>
+                                        <input name="DriverName" class="form-control">
+                                    </div>
+                                    <div class="col-md-6 mb-2">
+                                        <label class="form-label fw-normal">Телефон</label>
+                                        <input name="DriverPhone" class="form-control">
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label fw-normal">Марка ТС</label>
+                                        <input name="VehicleBrand" class="form-control">
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label fw-normal">Гос. номер</label>
+                                        <input name="VehicleNumber" class="form-control">
+                                    </div>
+                                    <div class="col-md-4 mb-2">
+                                        <label class="form-label fw-normal">Цвет ТС</label>
+                                        <input name="VehicleColor" class="form-control">
+                                    </div>
+                                    <div class="col-12 mb-2">
+                                        <label class="form-label fw-normal">Примечание диспетчера</label>
+                                        <textarea name="DispatcherNotes" class="form-control" rows="2"></textarea>
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        }
+                        else
+                        {
+                            <!-- Если пользователь не диспетчер, показываем заглушку -->
+                            <div class="col-6 mb-3 border rounded p-3 bg-light">
+                                <h6 class="fw-bold text-muted mb-3">Раздел диспетчера</h6>
+                                <div class="text-center text-muted py-5">
+                                    <p class="mt-2">Доступно только диспетчерам</p>
+                                </div>
+                            </div>
+                        }
                     </div>
                 </div>
 
                 <div class="modal-footer justify-content-center">
                     <button type="button" class="btn btn-based" data-bs-dismiss="modal">Отмена</button>
                     <button type="submit" class="btn btn-based" onclick="document.getElementById('actionType').value='save'">Сохранить</button>
-                    <button type="submit" class="btn btn-based" onclick="document.getElementById('actionType').value='approve'">Утвердить</button>
-                    <button type="submit" class="btn btn-based" onclick="document.getElementById('actionType').value='reject'">Отклонить</button>
+                    
+                    @if (isDispatcher)
+                    {
+                        <button type="submit" class="btn btn-based" onclick="document.getElementById('actionType').value='approve'">Утвердить</button>
+                        <button type="submit" class="btn btn-based" onclick="document.getElementById('actionType').value='reject'">Отклонить</button>
+                    }
                 </div>
             </form>
         </div>

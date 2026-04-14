@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
-using Microsoft.AspNetCore.Authorization;
 namespace TransportRequestSystem.Controllers
 {
     [Authorize]
@@ -14,6 +13,10 @@ namespace TransportRequestSystem.Controllers
         public ApplicationsController(ApplicationDbContext context)
         {
             _context = context;
+        }
+        private bool IsDispatcher()
+        {
+            return User.IsInRole("Dispatcher");
         }
 
         // Главная страница с фильтрами
@@ -149,21 +152,27 @@ namespace TransportRequestSystem.Controllers
                 existingApp.Passengers = application.Passengers ?? string.Empty;
                 existingApp.Route = application.Route;
                 existingApp.Notes = application.Notes ?? string.Empty;
-                existingApp.DispatcherName = application.DispatcherName;
-                existingApp.DispatcherPhone = application.DispatcherPhone;
-                existingApp.DriverName = application.DriverName;
-                existingApp.DriverPhone = application.DriverPhone;
-                existingApp.VehicleBrand = application.VehicleBrand;
-                existingApp.VehicleNumber = application.VehicleNumber;
-                existingApp.VehicleColor = application.VehicleColor;
-                existingApp.DispatcherNotes = application.DispatcherNotes;
+                if (IsDispatcher())
+                {
+                    existingApp.DispatcherName = application.DispatcherName;
+                    existingApp.DispatcherPhone = application.DispatcherPhone;
+                    existingApp.DriverName = application.DriverName;
+                    existingApp.DriverPhone = application.DriverPhone;
+                    existingApp.VehicleBrand = application.VehicleBrand;
+                    existingApp.VehicleNumber = application.VehicleNumber;
+                    existingApp.VehicleColor = application.VehicleColor;
+                    existingApp.DispatcherNotes = application.DispatcherNotes;
+                }
                 existingApp.UpdatedAt = DateTime.UtcNow;
 
                 // Обновляем статус если нужно
-                if (actionType == "approve")
-                    existingApp.Status = ApplicationStatus.Approved;
-                else if (actionType == "reject")
-                    existingApp.Status = ApplicationStatus.RejectedByDispatcher;
+                if (IsDispatcher())
+                {
+                    if (actionType == "approve")
+                        existingApp.Status = ApplicationStatus.Approved;
+                    else if (actionType == "reject")
+                        existingApp.Status = ApplicationStatus.RejectedByDispatcher;
+                }
 
                 // Если статус изменился, добавляем запись в историю
                 if (oldStatus != existingApp.Status)

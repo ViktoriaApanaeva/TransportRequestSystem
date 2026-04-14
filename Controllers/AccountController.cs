@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
 using TransportRequestSystem.Data;
 
@@ -16,50 +16,70 @@ namespace TransportRequestSystem.Controllers
             _context = context;
         }
 
-        // GET: /Account/Login
         [HttpGet]
         public IActionResult Login()
         {
             return View();
         }
 
-        // POST: /Account/Login
         [HttpPost]
         public async Task<IActionResult> Login(string email, string password)
         {
-            // Ищем или создаем пользователя
-            var user = _context.Users.FirstOrDefault(u => u.Email == email);
+            // Ищем пользователя через сырой SQL
+            string userId = null;
+            string userEmail = null;
+            string role = "User";
 
-            if (user == null)
+            using (var cmd = _context.Database.GetDbConnection().CreateCommand())
             {
-                user = new IdentityUser
+                if (cmd.Connection.State != System.Data.ConnectionState.Open)
+                    await cmd.Connection.OpenAsync();
+
+                cmd.CommandText = "SELECT \"Id\", \"Email\", COALESCE(\"Role\", 'User') FROM \"AspNetUsers\" WHERE \"Email\" = @email";
+                cmd.Parameters.Add(new Npgsql.NpgsqlParameter("@email", email));
+
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    Id = Guid.NewGuid().ToString(),
-                    UserName = email,
-                    Email = email,
-                    EmailConfirmed = true
-                };
-                _context.Users.Add(user);
-                await _context.SaveChangesAsync();
+                    if (await reader.ReadAsync())
+                    {
+                        userId = reader.GetString(0);
+                        userEmail = reader.GetString(1);
+                        role = reader.GetString(2);
+                    }
+                }
             }
 
-            // Создаем claims
+            // Если пользователь не найден - создаем
+            if (userId == null)
+            {
+                userId = Guid.NewGuid().ToString();
+
+                using (var cmd = _context.Database.GetDbConnection().CreateCommand())
+                {
+                    cmd.CommandText = "INSERT INTO \"AspNetUsers\" (\"Id\", \"UserName\", \"Email\", \"EmailConfirmed\", \"Role\", \"LockoutEnabled\", \"AccessFailedCount\") VALUES (@id, @email, @email, true, 'User', false, 0)";
+                    cmd.Parameters.Add(new Npgsql.NpgsqlParameter("@id", userId));
+                    cmd.Parameters.Add(new Npgsql.NpgsqlParameter("@email", email));
+                    await cmd.ExecuteNonQueryAsync();
+                }
+                role = "User";
+                userEmail = email;
+            }
+
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name, user.Email),
-                new Claim(ClaimTypes.Email, user.Email)
+                new Claim(ClaimTypes.Name, userEmail),
+                new Claim(ClaimTypes.Email, userEmail),
+                new Claim(ClaimTypes.Role, role)
             };
 
             var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var principal = new ClaimsPrincipal(identity);
 
-            // Вход
             await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
             return RedirectToAction("Index", "Applications");
         }
 
-        // POST: /Account/Logout
         [HttpGet]
         public async Task<IActionResult> Logout()
         {
