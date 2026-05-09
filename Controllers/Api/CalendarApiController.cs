@@ -7,6 +7,7 @@ using TransportRequestSystem.Models;
 namespace TransportRequestSystem.Controllers.Api
 {
     [Route("api/[controller]")]
+    [AllowAnonymous]
     [ApiController]
     public class CalendarApiController : ControllerBase
     {
