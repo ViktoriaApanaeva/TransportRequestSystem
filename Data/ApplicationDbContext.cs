@@ -12,7 +12,8 @@ namespace TransportRequestSystem.Data
             : base(options)
         {
         }
-
+        public DbSet<Dispatcher> Dispatchers { get; set; }
+        public DbSet<Driver> Drivers { get; set; }
         public DbSet<Application> Applications { get; set; }
         public DbSet<StatusHistory> StatusHistory { get; set; }
 

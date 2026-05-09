@@ -21,8 +21,8 @@ namespace TransportRequestSystem.Models
         [Required]
         [Display(Name = "Дата")]
         [DataType(DataType.Date)]
-        public DateTime ApplicationDate { get; set; } = DateTime.Today;
-        
+        public DateTime ApplicationDate { get; set; } = DateTime.UtcNow;
+
         [Display(Name = "Начало поездки")]
         public DateTime? TripStart { get; set; }
 
@@ -98,7 +98,7 @@ namespace TransportRequestSystem.Models
         public string? DispatcherNotes { get; set; }
 
         // Системные поля
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
         public List<StatusHistory> StatusHistory { get; set; } = new();
 
@@ -106,6 +106,20 @@ namespace TransportRequestSystem.Models
         {
             return $"{DateTime.Now:yyyyMMdd}-{new Random().Next(1000, 9999)}";
         }
+    }
+
+    public class Dispatcher
+    {
+        public int Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
+    }
+
+    public class Driver
+    {
+        public int Id { get; set; }
+        public string FullName { get; set; } = string.Empty;
+        public string Phone { get; set; } = string.Empty;
     }
 
     public enum ApplicationStatus
@@ -160,5 +174,5 @@ namespace TransportRequestSystem.Models
         public bool SelectAll { get; set; }
     }
 
-    
+
 }

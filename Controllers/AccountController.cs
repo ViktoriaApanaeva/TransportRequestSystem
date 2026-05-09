@@ -1,9 +1,12 @@
 ﻿using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
+using Npgsql;
 using TransportRequestSystem.Data;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 
 namespace TransportRequestSystem.Controllers
 {
@@ -16,6 +19,16 @@ namespace TransportRequestSystem.Controllers
             _context = context;
         }
 
+        private string HashPassword(string password)
+        {
+            using (var sha256 = SHA256.Create())
+            {
+                var bytes = Encoding.UTF8.GetBytes(password);
+                var hash = sha256.ComputeHash(bytes);
+                return Convert.ToBase64String(hash);
+            }
+        }
+
         [HttpGet]
         public IActionResult Login()
         {
@@ -23,59 +36,78 @@ namespace TransportRequestSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> Login(string email, string password)
+        public async Task<IActionResult> Login(string username, string password)
         {
-            // Ищем пользователя через сырой SQL
-            string userId = null;
-            string userEmail = null;
-            string role = "User";
-
-            using (var cmd = _context.Database.GetDbConnection().CreateCommand())
+            if (string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
             {
-                if (cmd.Connection.State != System.Data.ConnectionState.Open)
-                    await cmd.Connection.OpenAsync();
+                ViewBag.Error = "Введите логин и пароль";
+                return View();
+            }
 
-                cmd.CommandText = "SELECT \"Id\", \"Email\", COALESCE(\"Role\", 'User') FROM \"AspNetUsers\" WHERE \"Email\" = @email";
-                cmd.Parameters.Add(new Npgsql.NpgsqlParameter("@email", email));
+            // Ищем пользователя в таблице AspNetUsers
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName == username);
 
-                using (var reader = await cmd.ExecuteReaderAsync())
+            if (user == null)
+            {
+                // Создаём нового пользователя
+                var hashedPassword = HashPassword(password);
+
+                user = new IdentityUser
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    UserName = username,
+                    Email = $"{username}@local.com",
+                    PasswordHash = hashedPassword
+                };
+
+                _context.Users.Add(user);
+                await _context.SaveChangesAsync();
+
+                // Добавляем роль по умолчанию через ExecuteSqlRaw
+                await _context.Database.ExecuteSqlRawAsync(
+                    "UPDATE \"AspNetUsers\" SET \"Role\" = 'User' WHERE \"Id\" = {0}", user.Id);
+            }
+            else
+            {
+                var hashedInputPassword = HashPassword(password);
+                if (user.PasswordHash != hashedInputPassword)
+                {
+                    ViewBag.Error = "Неверный логин или пароль";
+                    return View();
+                }
+            }
+
+            // Получаем роль пользователя через ExecuteSqlRaw
+            string role = "User";
+            using (var command = _context.Database.GetDbConnection().CreateCommand())
+            {
+                command.CommandText = "SELECT \"Role\" FROM \"AspNetUsers\" WHERE \"Id\" = @id";
+                command.Parameters.Add(new Npgsql.NpgsqlParameter("@id", user.Id));
+
+                _context.Database.OpenConnection();
+                using (var reader = await command.ExecuteReaderAsync())
                 {
                     if (await reader.ReadAsync())
                     {
-                        userId = reader.GetString(0);
-                        userEmail = reader.GetString(1);
-                        role = reader.GetString(2);
+                        role = reader.GetString(0);
                     }
                 }
+                _context.Database.CloseConnection();
             }
 
-            // Если пользователь не найден - создаем
-            if (userId == null)
-            {
-                userId = Guid.NewGuid().ToString();
-
-                using (var cmd = _context.Database.GetDbConnection().CreateCommand())
-                {
-                    cmd.CommandText = "INSERT INTO \"AspNetUsers\" (\"Id\", \"UserName\", \"Email\", \"EmailConfirmed\", \"Role\", \"LockoutEnabled\", \"AccessFailedCount\") VALUES (@id, @email, @email, true, 'User', false, 0)";
-                    cmd.Parameters.Add(new Npgsql.NpgsqlParameter("@id", userId));
-                    cmd.Parameters.Add(new Npgsql.NpgsqlParameter("@email", email));
-                    await cmd.ExecuteNonQueryAsync();
-                }
-                role = "User";
-                userEmail = email;
-            }
-
+            // Создаём claims для входа
             var claims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name, userEmail),
-                new Claim(ClaimTypes.Email, userEmail),
+                new Claim(ClaimTypes.Name, user.UserName),
+                new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Role, role)
             };
 
-            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            var identity = new ClaimsIdentity(claims, "CookieAuth");
             var principal = new ClaimsPrincipal(identity);
 
-            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
+            await HttpContext.SignInAsync("CookieAuth", principal);
 
             return RedirectToAction("Index", "Applications");
         }
@@ -83,7 +115,7 @@ namespace TransportRequestSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Logout()
         {
-            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            await HttpContext.SignOutAsync("CookieAuth");
             return RedirectToAction("Login", "Account");
         }
     }

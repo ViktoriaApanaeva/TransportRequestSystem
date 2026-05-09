@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
+
 namespace TransportRequestSystem.Controllers
 {
     [Authorize]
@@ -14,6 +15,7 @@ namespace TransportRequestSystem.Controllers
         {
             _context = context;
         }
+
         private bool IsDispatcher()
         {
             return User.IsInRole("Dispatcher");
@@ -30,18 +32,25 @@ namespace TransportRequestSystem.Controllers
             if (selectAll)
             {
                 SelectedStatuses = Enum.GetValues<ApplicationStatus>().Cast<ApplicationStatus>().ToList();
-            };
+            }
+            ;
 
             var query = _context.Applications
                 .Include(a => a.StatusHistory)
                 .AsQueryable();
 
-            // Применяем фильтры
+            // Применяем фильтры с преобразованием в UTC
             if (DateFrom.HasValue)
-                query = query.Where(a => a.ApplicationDate >= DateFrom.Value);
+            {
+                var dateFromUtc = DateTime.SpecifyKind(DateFrom.Value.Date, DateTimeKind.Utc);
+                query = query.Where(a => a.ApplicationDate >= dateFromUtc);
+            }
 
             if (DateTo.HasValue)
-                query = query.Where(a => a.ApplicationDate <= DateTo.Value);
+            {
+                var dateToUtc = DateTime.SpecifyKind(DateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
+                query = query.Where(a => a.ApplicationDate <= dateToUtc);
+            }
 
             if (!string.IsNullOrWhiteSpace(OrganizationUnit))
                 query = query.Where(a => a.OrganizationUnit.Contains(OrganizationUnit));
@@ -61,7 +70,8 @@ namespace TransportRequestSystem.Controllers
                 SelectedStatuses = SelectedStatuses ?? new List<ApplicationStatus>()
             };
             ViewBag.Filter = filter;
-
+            ViewBag.Dispatchers = await _context.Dispatchers.ToListAsync();
+            ViewBag.Drivers = await _context.Drivers.ToListAsync();
             return View(applications);
         }
 
@@ -86,7 +96,14 @@ namespace TransportRequestSystem.Controllers
             {
                 application.Id = 0;
                 application.Number = Application.GenerateNumber();
-                application.CreatedAt = DateTime.Now;
+                application.CreatedAt = DateTime.UtcNow;
+                application.ApplicationDate = DateTime.SpecifyKind(application.ApplicationDate, DateTimeKind.Utc);
+
+                if (application.TripStart.HasValue)
+                    application.TripStart = DateTime.SpecifyKind(application.TripStart.Value, DateTimeKind.Utc);
+                if (application.TripEnd.HasValue)
+                    application.TripEnd = DateTime.SpecifyKind(application.TripEnd.Value, DateTimeKind.Utc);
+
                 application.Status = actionType switch
                 {
                     "approve" => ApplicationStatus.Approved,
@@ -103,7 +120,7 @@ namespace TransportRequestSystem.Controllers
                     ApplicationId = application.Id,
                     NewStatus = application.Status.ToString(),
                     ChangedBy = User.Identity.Name ?? "System",
-                    ChangedDate = DateTime.Now
+                    ChangedDate = DateTime.UtcNow
                 };
                 _context.StatusHistory.Add(history);
                 await _context.SaveChangesAsync();
@@ -118,14 +135,28 @@ namespace TransportRequestSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // Получение данных заявки для редактирования
+        // Получение данных заявки для редактирования (GET)
+        [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
             var application = await _context.Applications.FindAsync(id);
-            return application == null ? NotFound() : Json(application);
+            if (application == null)
+                return NotFound();
+
+            // Преобразуем даты в UTC для корректной передачи в JSON
+            if (application.TripStart.HasValue)
+                application.TripStart = DateTime.SpecifyKind(application.TripStart.Value, DateTimeKind.Utc);
+            if (application.TripEnd.HasValue)
+                application.TripEnd = DateTime.SpecifyKind(application.TripEnd.Value, DateTimeKind.Utc);
+            if (application.CreatedAt != DateTime.MinValue)
+                application.CreatedAt = DateTime.SpecifyKind(application.CreatedAt, DateTimeKind.Utc);
+            if (application.ApplicationDate != DateTime.MinValue)
+                application.ApplicationDate = DateTime.SpecifyKind(application.ApplicationDate, DateTimeKind.Utc);
+
+            return Json(application);
         }
 
-        // Сохранение изменений заявки
+        // Сохранение изменений заявки (POST)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, Application application, string actionType)
@@ -141,10 +172,14 @@ namespace TransportRequestSystem.Controllers
 
                 var oldStatus = existingApp.Status;
 
-                // Обновляем поля
-                existingApp.ApplicationDate = application.ApplicationDate;
-                existingApp.TripStart = application.TripStart;
-                existingApp.TripEnd = application.TripEnd;
+                // Обновляем поля с преобразованием дат в UTC
+                existingApp.ApplicationDate = DateTime.SpecifyKind(application.ApplicationDate, DateTimeKind.Utc);
+                existingApp.TripStart = application.TripStart.HasValue
+                    ? DateTime.SpecifyKind(application.TripStart.Value, DateTimeKind.Utc)
+                    : null;
+                existingApp.TripEnd = application.TripEnd.HasValue
+                    ? DateTime.SpecifyKind(application.TripEnd.Value, DateTimeKind.Utc)
+                    : null;
                 existingApp.OrganizationUnit = application.OrganizationUnit;
                 existingApp.ResponsiblePerson = application.ResponsiblePerson;
                 existingApp.Phone = application.Phone;
@@ -152,6 +187,7 @@ namespace TransportRequestSystem.Controllers
                 existingApp.Passengers = application.Passengers ?? string.Empty;
                 existingApp.Route = application.Route;
                 existingApp.Notes = application.Notes ?? string.Empty;
+
                 if (IsDispatcher())
                 {
                     existingApp.DispatcherName = application.DispatcherName;
@@ -163,6 +199,7 @@ namespace TransportRequestSystem.Controllers
                     existingApp.VehicleColor = application.VehicleColor;
                     existingApp.DispatcherNotes = application.DispatcherNotes;
                 }
+
                 existingApp.UpdatedAt = DateTime.UtcNow;
 
                 // Обновляем статус если нужно
@@ -183,7 +220,7 @@ namespace TransportRequestSystem.Controllers
                         OldStatus = oldStatus.ToString(),
                         NewStatus = existingApp.Status.ToString(),
                         ChangedBy = User.Identity.Name ?? "System",
-                        ChangedDate = DateTime.Now
+                        ChangedDate = DateTime.UtcNow
                     };
                     _context.StatusHistory.Add(history);
                 }
@@ -199,25 +236,6 @@ namespace TransportRequestSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // Удаление заявки (soft delete) удалено до востребования
-        //[HttpPost]
-        //public async Task<IActionResult> Delete(int id)
-        //{
-        //    var application = await _context.Applications.FindAsync(id);
-        //    if (application == null)
-        //        return NotFound();
-
-        //    var oldStatus = application.Status.ToString();
-        //    application.Status = ApplicationStatus.Deleted;
-        //    application.UpdatedAt = DateTime.Now;
-
-        //    await AddStatusHistory(id, oldStatus, "Удалена", "Система");
-        //    await _context.SaveChangesAsync();
-
-        //    TempData["Success"] = "Заявка удалена!";
-        //    return RedirectToAction(nameof(Index));
-        //}
-
         // Изменение статуса заявки
         [HttpPost]
         public async Task<IActionResult> ChangeStatus(int id, ApplicationStatus status)
@@ -228,7 +246,7 @@ namespace TransportRequestSystem.Controllers
 
             var oldStatus = application.Status;
             application.Status = status;
-            application.UpdatedAt = DateTime.Now;
+            application.UpdatedAt = DateTime.UtcNow;
 
             await AddStatusHistory(id, oldStatus.ToString(), status.ToString(), "Система");
             await _context.SaveChangesAsync();
@@ -246,7 +264,7 @@ namespace TransportRequestSystem.Controllers
                 OldStatus = oldStatus,
                 NewStatus = newStatus,
                 ChangedBy = changedBy,
-                ChangedDate = DateTime.Now
+                ChangedDate = DateTime.UtcNow
             };
             _context.StatusHistory.Add(history);
             await _context.SaveChangesAsync();

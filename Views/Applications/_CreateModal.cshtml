@@ -77,21 +77,40 @@
                             <div class="col-6 mb-3 border rounded p-3">
                                 <h6 class="fw-bold text-primary mb-3">Раздел диспетчера</h6>
                                 <div class="row">
-                                    <div class="col-md-6 mb-2">
+                                    <div class="col-md-12 mb-2">
                                         <label class="form-label fw-normal">ФИО диспетчера</label>
-                                        <input name="DispatcherName" class="form-control">
+                                        <select name="DispatcherName" id="DispatcherName" class="form-select">
+                                            <option value="">— Выберите диспетчера —</option>
+                                            @if (ViewBag.Dispatchers != null)
+                                            {
+                                                foreach (var d in ViewBag.Dispatchers)
+                                                {
+                                                    <option value="@d.FullName" data-phone="@d.Phone">@d.FullName</option>
+                                                }
+                                            }
+                                        </select>
                                     </div>
-                                    <div class="col-md-6 mb-2">
-                                        <label class="form-label fw-normal">Телефон</label>
-                                        <input name="DispatcherPhone" class="form-control">
+                                    <div class="col-md-12 mb-2">
+                                        <label class="form-label fw-normal">Телефон диспетчера</label>
+                                        <input name="DispatcherPhone" id="DispatcherPhone" class="form-control" readonly>
                                     </div>
-                                    <div class="col-md-6 mb-2">
-                                        <label class="form-label fw-normal">ФИО водителя ТС</label>
-                                        <input name="DriverName" class="form-control">
+
+                                    <div class="col-md-12 mb-2">
+                                        <label class="form-label fw-normal">ФИО водителя</label>
+                                        <select name="DriverName" id="DriverName" class="form-select">
+                                            <option value="">— Выберите водителя —</option>
+                                            @if (ViewBag.Drivers != null)
+                                            {
+                                                foreach (var d in ViewBag.Drivers)
+                                                {
+                                                    <option value="@d.FullName" data-phone="@d.Phone">@d.FullName</option>
+                                                }
+                                            }
+                                        </select>
                                     </div>
-                                    <div class="col-md-6 mb-2">
-                                        <label class="form-label fw-normal">Телефон</label>
-                                        <input name="DriverPhone" class="form-control">
+                                    <div class="col-md-12 mb-2">
+                                        <label class="form-label fw-normal">Телефон водителя</label>
+                                        <input name="DriverPhone" id="DriverPhone" class="form-control" readonly>
                                     </div>
                                     <div class="col-md-4 mb-2">
                                         <label class="form-label fw-normal">Марка ТС</label>
@@ -138,4 +157,25 @@
             </form>
         </div>
     </div>
+    <script>
+        // Автозаполнение телефона при выборе диспетчера
+        var dispatcherSelect = document.getElementById('DispatcherName');
+        if (dispatcherSelect) {
+            dispatcherSelect.addEventListener('change', function() {
+                var selected = this.options[this.selectedIndex];
+                var phone = selected.getAttribute('data-phone') || '';
+                document.getElementById('DispatcherPhone').value = phone;
+            });
+        }
+
+        // Автозаполнение телефона при выборе водителя
+        var driverSelect = document.getElementById('DriverName');
+        if (driverSelect) {
+            driverSelect.addEventListener('change', function() {
+                var selected = this.options[this.selectedIndex];
+                var phone = selected.getAttribute('data-phone') || '';
+                document.getElementById('DriverPhone').value = phone;
+            });
+        }
+    </script>
 </div>

@@ -221,14 +221,19 @@
             });
         }
 
-                function loadApplication(id) {
+               function loadApplication(id) {
             fetch('/Applications/Edit/' + id)
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Данные из сервера:', data); 
 
-                    // Соответствие между полями JSON и полями формы
                     const fieldMapping = {
-                        // JSON поле : Имя поля в форме
+                        'id': 'Id',
                         'number': 'Number',
                         'applicationDate': 'ApplicationDate',
                         'tripStart': 'TripStart',
@@ -254,36 +259,51 @@
                     Object.keys(fieldMapping).forEach(jsonField => {
                         const formFieldName = fieldMapping[jsonField];
                         const input = document.querySelector(`#createModal [name="${formFieldName}"]`);
-
-                        if (input) {
-                            // Преобразуем даты в формат для input
+                        if (input && data[jsonField]) {
                             let value = data[jsonField];
 
-                            if (jsonField.includes('Date') || jsonField.includes('trip')) {
-                                if (value) {
-                                    // Для date input нужно только YYYY-MM-DD
-                                    if (input.type === 'date') {
-                                        value = value.split('T')[0];
-                                    }
-                                    // Для datetime-local нужно YYYY-MM-DDTHH:MM
-                                    else if (input.type === 'datetime-local') {
-                                        value = value.replace('Z', '').slice(0, 16);
-                                    }
-                                }
+                            // Преобразуем даты
+                            if (jsonField === 'applicationDate' && value) {
+                                value = value.split('T')[0];
+                            }
+                            if ((jsonField === 'tripStart' || jsonField === 'tripEnd') && value) {
+                                value = value.replace('Z', '').slice(0, 16);
                             }
 
-                            input.value = value || '';
-                        } else {
-                            console.log(`Поле ${formFieldName} не найдено в форме!`);
+                            input.value = value;
                         }
                     });
 
-                    // Устанавливаем action формы для редактирования
+                    // Выбор диспетчера
+                    if (data.dispatcherName) {
+                        const dispatcherSelect = document.getElementById('DispatcherName');
+                        for (let i = 0; i < dispatcherSelect.options.length; i++) {
+                            if (dispatcherSelect.options[i].value === data.dispatcherName) {
+                                dispatcherSelect.selectedIndex = i;
+                                const event = new Event('change');
+                                dispatcherSelect.dispatchEvent(event);
+                                break;
+                            }
+                        }
+                    }
+
+                    // Выбор водителя
+                    if (data.driverName) {
+                        const driverSelect = document.getElementById('DriverName');
+                        for (let i = 0; i < driverSelect.options.length; i++) {
+                            if (driverSelect.options[i].value === data.driverName) {
+                                driverSelect.selectedIndex = i;
+                                const event = new Event('change');
+                                driverSelect.dispatchEvent(event);
+                                break;
+                            }
+                        }
+                    }
+
+                    // Настройка формы
                     const form = document.querySelector('#createModal form');
                     form.action = '/Applications/Edit/' + id;
-                    form.method = 'post';
 
-                    // Добавляем скрытое поле с ID
                     let idInput = form.querySelector('input[name="Id"]');
                     if (!idInput) {
                         idInput = document.createElement('input');
@@ -293,7 +313,6 @@
                     }
                     idInput.value = id;
 
-                    // Меняем заголовок модального окна
                     const modalTitle = document.querySelector('#createModal .modal-title');
                     if (modalTitle) {
                         modalTitle.textContent = 'Редактирование заявки №' + data.number;
@@ -303,7 +322,7 @@
                 })
                 .catch(error => {
                     console.error('Ошибка:', error);
-                    alert('Не удалось загрузить данные заявки');
+                    alert('Не удалось загрузить данные заявки: ' + error.message);
                 });
         }
     </script>

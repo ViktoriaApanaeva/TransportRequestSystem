@@ -4,7 +4,6 @@ using OfficeOpenXml;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
 
-
 namespace TransportRequestSystem.Controllers
 {
     public class AnalyticsController : Controller
@@ -14,20 +13,22 @@ namespace TransportRequestSystem.Controllers
         public AnalyticsController(ApplicationDbContext context)
         {
             _context = context;
-            // Настройка лицензии EPPlus 
             ExcelPackage.License.SetNonCommercialPersonal("Transport Request System");
         }
 
-        // Главная страница аналитики
         public async Task<IActionResult> Index(DateTime? dateFrom, DateTime? dateTo)
         {
-            // По умолчанию последние 30 дней
-            dateFrom ??= DateTime.Today.AddDays(-30);
-            dateTo ??= DateTime.Today;
+            // По умолчанию последние 30 дней (в UTC)
+            dateFrom ??= DateTime.UtcNow.AddDays(-30).Date;
+            dateTo ??= DateTime.UtcNow.Date;
+
+            // Преобразуем в UTC для запроса к БД
+            var fromUtc = DateTime.SpecifyKind(dateFrom.Value.Date, DateTimeKind.Utc);
+            var toUtc = DateTime.SpecifyKind(dateTo.Value.Date.AddDays(1), DateTimeKind.Utc);
 
             var query = _context.Applications
                 .Where(a => a.Status != ApplicationStatus.Deleted)
-                .Where(a => a.CreatedAt >= dateFrom && a.CreatedAt <= dateTo.Value.AddDays(1));
+                .Where(a => a.CreatedAt >= fromUtc && a.CreatedAt <= toUtc);
 
             var applications = await query.ToListAsync();
 
@@ -41,10 +42,26 @@ namespace TransportRequestSystem.Controllers
                 .GroupBy(a => GetStatusName(a.Status))
                 .ToDictionary(g => g.Key, g => g.Count());
 
-            // Использование транспорта
+            int periodDays = (dateTo.Value.Date - dateFrom.Value.Date).Days + 1;
+
+            // Группировка заявок по виду транспорта (на основе количества пассажиров)
+            var vehicleTypeStats = applications
+                .Where(a => !string.IsNullOrEmpty(a.Passengers))
+                .Select(a => new { a.Passengers, CalculatedType = GetVehicleTypeByPassengers(a.Passengers) })
+                .Where(x => x.CalculatedType != "Не определен")
+                .GroupBy(x => x.CalculatedType)
+                .Select(g => new
+                {
+                    VehicleType = g.Key,
+                    AveragePerDay = Math.Round((double)g.Count() / periodDays, 1)
+                })
+                .OrderByDescending(x => x.AveragePerDay)
+                .ToDictionary(x => x.VehicleType, x => x.AveragePerDay);
+
+            // Использование транспорта (по брендам)
             var vehicleStats = applications
                 .Where(a => !string.IsNullOrEmpty(a.VehicleBrand))
-                .GroupBy(a => $"{a.VehicleBrand}")
+                .GroupBy(a => a.VehicleBrand)
                 .ToDictionary(g => g.Key, g => g.Count());
 
             // Среднее время выполнения
@@ -54,35 +71,36 @@ namespace TransportRequestSystem.Controllers
                 .ToList();
 
             double avgTime = completedApps.Any() ? Math.Round(completedApps.Average(), 1) : 0;
-            ViewBag.AvgTime = avgTime;
 
             ViewBag.DateFrom = dateFrom;
             ViewBag.DateTo = dateTo;
             ViewBag.DailyStats = dailyStats;
             ViewBag.StatusStats = statusStats;
+            ViewBag.VehicleTypeStats = vehicleTypeStats;
             ViewBag.VehicleStats = vehicleStats;
+            ViewBag.AvgTime = avgTime;
             ViewBag.TotalApps = applications.Count;
 
             return View(applications);
         }
 
-        // Экспорт в Excel
         [HttpGet]
         public async Task<IActionResult> ExportSimple(DateTime? dateFrom, DateTime? dateTo)
         {
             try
             {
-                var from = dateFrom ?? DateTime.Today.AddDays(-30);
-                var to = dateTo ?? DateTime.Today;
+                var from = dateFrom ?? DateTime.UtcNow.AddDays(-30).Date;
+                var to = dateTo ?? DateTime.UtcNow.Date;
 
-                // Получаем данные
+                var fromUtc = DateTime.SpecifyKind(from.Date, DateTimeKind.Utc);
+                var toUtc = DateTime.SpecifyKind(to.Date.AddDays(1), DateTimeKind.Utc);
+
                 var applications = await _context.Applications
                     .Where(a => a.Status != ApplicationStatus.Deleted)
-                    .Where(a => a.CreatedAt >= from && a.CreatedAt <= to.AddDays(1))
+                    .Where(a => a.CreatedAt >= fromUtc && a.CreatedAt <= toUtc)
                     .OrderByDescending(a => a.CreatedAt)
                     .ToListAsync();
 
-                // Проверяем, есть ли данные
                 if (!applications.Any())
                 {
                     TempData["Error"] = "Нет данных за выбранный период";
@@ -92,12 +110,11 @@ namespace TransportRequestSystem.Controllers
                 using var package = new ExcelPackage();
                 var worksheet = package.Workbook.Worksheets.Add("Заявки");
 
-                // Заголовки
                 string[] headers = {
-            "№ заявки", "Дата создания", "Статус", "Организация",
-            "Ответственный", "Телефон", "Цель", "Маршрут",
-            "Пассажиры", "Водитель", "Транспорт", "Дата поездки", "Примечание"
-        };
+                    "№ заявки", "Дата создания", "Статус", "Организация",
+                    "Ответственный", "Телефон", "Цель", "Маршрут",
+                    "Пассажиры", "Водитель", "Транспорт", "Дата поездки", "Примечание"
+                };
 
                 for (int i = 0; i < headers.Length; i++)
                 {
@@ -105,7 +122,6 @@ namespace TransportRequestSystem.Controllers
                     worksheet.Cells[1, i + 1].Style.Font.Bold = true;
                 }
 
-                // Данные
                 for (int i = 0; i < applications.Count; i++)
                 {
                     var app = applications[i];
@@ -128,7 +144,6 @@ namespace TransportRequestSystem.Controllers
 
                 worksheet.Cells.AutoFitColumns();
 
-                // Формируем имя файла
                 string fileName = $"Заявки_{DateTime.Now:yyyyMMdd_HHmmss}.xlsx";
                 byte[] fileContents = package.GetAsByteArray();
 
@@ -157,6 +172,21 @@ namespace TransportRequestSystem.Controllers
                 ApplicationStatus.Deleted => "Удалена",
                 _ => status.ToString()
             };
+        }
+
+        private string GetVehicleTypeByPassengers(string passengers)
+        {
+            if (string.IsNullOrEmpty(passengers)) return "Не определен";
+
+            if (int.TryParse(passengers, out int count))
+            {
+                if (count <= 4) return "Легковой автомобиль";
+                if (count <= 8) return "Микроавтобус";
+                if (count <= 16) return "Грузовой фургон";
+                return "Автобус";
+            }
+
+            return "Не определен";
         }
     }
 }

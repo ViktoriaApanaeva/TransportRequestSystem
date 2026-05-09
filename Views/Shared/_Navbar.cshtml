@@ -11,7 +11,9 @@
         <div class="d-flex align-items-center gap-2">
             @if (User.Identity.IsAuthenticated)
             {
-                <span class="text-white small">@User.Identity.Name</span>
+                <span class="text-white small">
+                    <i class="bi bi-person-circle"></i> @User.Identity.Name
+                </span>
                 <a href="/Account/Logout" class="btn btn-sm"
                    style="background-color: #C09C6A; color: white; border-radius: 10px;">
                     <i class="bi bi-box-arrow-right"></i>

@@ -16,12 +16,24 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="~/css/analytics.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/navbar.css" asp-append-version="true" />
+    <style>
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: white;
+        }
+    </style>
 </head>
 <body>
     <!-- Навигация -->
     @await Html.PartialAsync("_Navbar")
+    
     <!-- Основной контент -->
     <div class="container mt-4 main-content">
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -31,7 +43,7 @@
                         dateFrom = ViewBag.DateFrom?.ToString("yyyy-MM-dd"), 
                         dateTo = ViewBag.DateTo?.ToString("yyyy-MM-dd") 
                     })" class="btn btn-base">
-                 Excel отчёт
+                        Отчёт xlsx
                 </a>
             </div>
         </div>
@@ -60,7 +72,7 @@
             <div class="col-md-3">
                 <div class="stat-card">
                     <h2>@ViewBag.TotalApps</h2>
-                    <p>Всего</p>
+                    <p>Всего заявок</p>
                 </div>
             </div>
             <div class="col-md-3">
@@ -111,17 +123,7 @@
             <div class="col-md-6 mb-4">
                 <div class="card">
                     <div class="card-header">
-                       Популярный транспорт
-                    </div>
-                    <div class="card-body">
-                        <canvas id="vehicleChart" height="250"></canvas>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6 mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        Последние заявки
+                       Последние заявки
                     </div>
                     <div class="card-body" style="max-height: 285px; overflow-y: auto;">
                         <table class="table table-sm">
@@ -133,13 +135,15 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach (var app in Model.Take(10))
+                                @foreach (var app in Model.OrderByDescending(a => a.CreatedAt).Take(10))
                                 {
                                     <tr>
                                         <td>@app.Number</td>
                                         <td>@app.CreatedAt.ToString("dd.MM.yyyy")</td>
                                         <td style="border-right:none !important">
-                                            <span class="badge-custom">@GetStatusName(app.Status)</span>
+                                            <span class="status-badge" style="background-color: @GetStatusColor(app.Status);">
+                                                @GetStatusName(app.Status)
+                                            </span>
                                         </td>
                                     </tr>
                                 }
@@ -148,12 +152,21 @@
                     </div>
                 </div>
             </div>
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                       Средняя загрузка по видам транспорта
+                    </div>
+                    <div class="card-body">
+                        <canvas id="vehicleTypeChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-
     <script>
-        // График по дням
+        // График 1: Динамика заявок по дням
         const dailyCtx = document.getElementById('dailyChart').getContext('2d');
         new Chart(dailyCtx, {
             type: 'line',
@@ -172,88 +185,77 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
-                    }
+                    legend: { display: false }
                 }
             }
         });
 
-        //график по статусам
-
+        // График 2: Распределение по статусам 
         const statusCtx = document.getElementById('statusChart').getContext('2d');
 
-        // Группируем похожие статусы для компактности
-        const statusMap = {
+        // Хронологический порядок статусов с цветами
+        const statusOrder = [
+            { key: 'Создана', color: '#dd8827', label: 'Создана' },
+            { key: 'Утверждена', color: '#28a745', label: 'Утверждена' },
+            { key: 'Назначено ТС', color: '#17a2b8', label: 'Назначено ТС' },
+            { key: 'Исполняется', color: '#008EB9', label: 'Исполняется' },
+            { key: 'Исполнена', color: '#20c997', label: 'Исполнена' },
+            { key: 'Не исполнена', color: '#ffc107', label: 'Не исполнена' },
+            { key: 'Отменена', color: '#6c757d', label: 'Отменена' },
+            { key: 'Удалена', color: '#dc3545', label: 'Удалена' }
+        ];
+
+        // Маппинг исходных статусов в группы
+        const statusMapping = {
+            'Создана': 'Создана',
             'Создана/Изменена': 'Создана',
             'Утверждена': 'Утверждена',
+            'Назначено ТС': 'Назначено ТС',
             'Исполняется': 'Исполняется',
             'Исполнена': 'Исполнена',
             'Не исполнена': 'Не исполнена',
-            'Отклонена диспетчером': 'Отклонена',
-            'Отклонена руководителем': 'Отклонена',
-            'Назначено ТС': 'Назначено ТС',
+            'Отклонена диспетчером': 'Отменена',
+            'Отклонена руководителем': 'Отменена',
             'Удалена': 'Удалена'
         };
 
-        // Получаем данные из ViewBag и группируем
         const rawStatusData = @Html.Raw(Json.Serialize(ViewBag.StatusStats));
         const groupedData = {};
 
         for (const [key, value] of Object.entries(rawStatusData)) {
-            const groupKey = statusMap[key] || key;
-            groupedData[groupKey] = (groupedData[groupKey] || 0) + value;
+            const mappedKey = statusMapping[key] || key;
+            groupedData[mappedKey] = (groupedData[mappedKey] || 0) + value;
         }
 
-        // Сортируем по убыванию
-        const sortedStatuses = Object.entries(groupedData)
-            .sort((a, b) => b[1] - a[1]);
+        const chartLabels = [];
+        const chartData = [];
+        const chartColors = [];
 
-        const chart = new Chart(statusCtx, {
+        for (const status of statusOrder) {
+            const count = groupedData[status.key] || 0;
+            chartLabels.push(status.label);
+            chartData.push(count);
+            chartColors.push(status.color);
+        }
+
+        new Chart(statusCtx, {
             type: 'bar',
             data: {
-                labels: sortedStatuses.map(item => item[0]),
+                labels: chartLabels,
                 datasets: [{
-                    label: 'Количество',
-                    data: sortedStatuses.map(item => item[1]),
-                    backgroundColor: [
-                        '#008EB9',
-                        '#28a745',
-                        '#ffc107',
-                        '#dc3545',
-                        '#17a2b8',
-                        '#6c757d'
-                    ],
+                    label: 'Количество заявок',
+                    data: chartData,
+                    backgroundColor: chartColors,
                     borderRadius: 5,
-                    // Добавляем атрибуты для отображения чисел
-                    datalabels: {
-                        display: true,
-                        align: 'end',
-                        anchor: 'end',
-                        color: '#333',
-                        fontWeight: 'bold',
-                        font: {
-                            size: 12
-                        },
-                        formatter: function(value) {
-                            return value + ' шт';
-                        }
-                    }
+                    barPercentage: 0.7
                 }]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: {
-                    padding: {
-                        right: 30 
-                    }
-                },
                 plugins: {
-                    legend: {
-                        display: false
-                    },
+                    legend: { display: false },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
@@ -265,64 +267,33 @@
                 scales: {
                     x: {
                         beginAtZero: true,
-                        grid: {
-                            color: 'rgba(0, 0, 0, 0.1)'
-                        },
                         title: {
                             display: true,
                             text: 'Количество заявок',
-                            font: {
-                                weight: 'bold',
-                                size: 12
-                            }
+                            font: { weight: 'bold', size: 12 }
                         }
                     },
                     y: {
-                        grid: {
-                            display: false
-                        },
                         title: {
                             display: true,
                             text: 'Статус',
-                            font: {
-                                weight: 'bold',
-                                size: 12
-                            }
-                        }
+                            font: { weight: 'bold', size: 12 }
+                        },
+                        grid: { display: false }
                     }
                 }
             }
         });
 
-        // Рисуем числа поверх графика (альтернативный метод)
-        setTimeout(() => {
-            const canvas = statusCtx.canvas;
-            const bars = document.querySelectorAll('#statusChart');
-    
-            chart.data.datasets[0].data.forEach((value, index) => {
-                const meta = chart.getDatasetMeta(0);
-                const bar = meta.data[index];
-                if (bar && bar.y) {
-                    const ctx = statusCtx;
-                    ctx.save();
-                    ctx.font = 'bold 12px Roboto';
-                    ctx.fillStyle = '#333';
-                    ctx.textAlign = 'left';
-                    ctx.fillText(`${value}`, bar.x + 10, bar.y + 5);
-                    ctx.restore();
-                }
-            });
-        }, 500);
-
-        // График по транспорту
-        const vehicleCtx = document.getElementById('vehicleChart').getContext('2d');
-        new Chart(vehicleCtx, {
+        // График 3: Средняя загрузка по видам транспорта
+        const vehicleTypeCtx = document.getElementById('vehicleTypeChart').getContext('2d');
+        new Chart(vehicleTypeCtx, {
             type: 'bar',
             data: {
-                labels: [@Html.Raw(string.Join(",", ((Dictionary<string, int>)ViewBag.VehicleStats).Keys.Take(5).Select(k => $"'{k}'")))],
+                labels: @Html.Raw(Json.Serialize(ViewBag.VehicleTypeStats.Keys)),
                 datasets: [{
-                    label: 'Количество поездок',
-                    data: [@string.Join(",", ((Dictionary<string, int>)ViewBag.VehicleStats).Values.Take(5))],
+                    label: 'Среднее количество заявок в день',
+                    data: @Html.Raw(Json.Serialize(ViewBag.VehicleTypeStats.Values)),
                     backgroundColor: '#008EB9',
                     borderRadius: 5
                 }]
@@ -331,16 +302,18 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        display: false
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Среднее: ${context.raw} заявок в день`;
+                            }
+                        }
                     }
                 }
             }
         });
 
-        function exportReport() {
-            document.getElementById('exportForm').submit();
-        }
+
     </script>
 </body>
 </html>
@@ -354,12 +327,29 @@
             ApplicationStatus.Approved => "Утверждена",
             ApplicationStatus.InProgress => "Исполняется",
             ApplicationStatus.Completed => "Исполнена",
-            ApplicationStatus.RejectedByDispatcher => "Отклонена",
-            ApplicationStatus.RejectedByDirector => "Отклонена",
+            ApplicationStatus.RejectedByDispatcher => "Отменена",
+            ApplicationStatus.RejectedByDirector => "Отменена",
             ApplicationStatus.AssignedToVehicle => "Назначено ТС",
             ApplicationStatus.NotCompleted => "Не исполнена",
             ApplicationStatus.Deleted => "Удалена",
             _ => status.ToString()
+        };
+    }
+
+    public string GetStatusColor(ApplicationStatus status)
+    {
+        return status switch
+        {
+            ApplicationStatus.CreatedOrModified => "#dd8827",
+            ApplicationStatus.Approved => "#28a745",
+            ApplicationStatus.AssignedToVehicle => "#17a2b8",
+            ApplicationStatus.InProgress => "#008EB9",
+            ApplicationStatus.Completed => "#20c997",
+            ApplicationStatus.NotCompleted => "#ffc107",
+            ApplicationStatus.RejectedByDispatcher => "#6c757d",
+            ApplicationStatus.RejectedByDirector => "#6c757d",
+            ApplicationStatus.Deleted => "#dc3545",
+            _ => "#6c757d"
         };
     }
 }
