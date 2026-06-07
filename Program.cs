@@ -7,7 +7,7 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Простая аутентификация без Identity
+// Простая аутентификация
 builder.Services.AddAuthentication("CookieAuth")
     .AddCookie("CookieAuth", options =>
     {
@@ -22,6 +22,7 @@ builder.Services.AddAuthentication("CookieAuth")
 builder.Services.AddAuthorization();
 builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
+builder.Services.AddHttpContextAccessor();
 
 var app = builder.Build();
 

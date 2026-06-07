@@ -46,8 +46,8 @@ namespace TransportRequestSystem.Controllers
 
             // Группировка заявок по виду транспорта (на основе количества пассажиров)
             var vehicleTypeStats = applications
-                .Where(a => !string.IsNullOrEmpty(a.Passengers))
-                .Select(a => new { a.Passengers, CalculatedType = GetVehicleTypeByPassengers(a.Passengers) })
+                .Where(a => a.Passengers > 0)
+                .Select(a => new { a.Passengers, CalculatedType = GetVehicleTypeByPassengers(a.Passengers.ToString()) })
                 .Where(x => x.CalculatedType != "Не определен")
                 .GroupBy(x => x.CalculatedType)
                 .Select(g => new
@@ -135,11 +135,11 @@ namespace TransportRequestSystem.Controllers
                     worksheet.Cells[row, 6].Value = app.Phone;
                     worksheet.Cells[row, 7].Value = app.Purpose;
                     worksheet.Cells[row, 8].Value = app.Route;
-                    worksheet.Cells[row, 9].Value = app.Passengers;
-                    worksheet.Cells[row, 10].Value = app.DriverName;
+                    worksheet.Cells[row, 9].Value = app.Passengers.ToString();
+                    worksheet.Cells[row, 10].Value = app.DriverName ?? "-";
                     worksheet.Cells[row, 11].Value = string.IsNullOrEmpty(app.VehicleBrand) ? "-" : $"{app.VehicleBrand} {app.VehicleNumber}";
                     worksheet.Cells[row, 12].Value = app.TripStart?.ToString("dd.MM.yyyy HH:mm") ?? "-";
-                    worksheet.Cells[row, 13].Value = app.Notes;
+                    worksheet.Cells[row, 13].Value = app.Notes ?? "-";
                 }
 
                 worksheet.Cells.AutoFitColumns();

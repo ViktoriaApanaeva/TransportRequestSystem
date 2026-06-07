@@ -77,53 +77,57 @@
                             <div class="col-6 mb-3 border rounded p-3">
                                 <h6 class="fw-bold text-primary mb-3">Раздел диспетчера</h6>
                                 <div class="row">
+                                    <!-- ФИО диспетчера (только для просмотра) -->
                                     <div class="col-md-12 mb-2">
                                         <label class="form-label fw-normal">ФИО диспетчера</label>
-                                        <select name="DispatcherName" id="DispatcherName" class="form-select">
-                                            <option value="">— Выберите диспетчера —</option>
-                                            @if (ViewBag.Dispatchers != null)
-                                            {
-                                                foreach (var d in ViewBag.Dispatchers)
-                                                {
-                                                    <option value="@d.FullName" data-phone="@d.Phone">@d.FullName</option>
-                                                }
-                                            }
-                                        </select>
+                                        <input name="DispatcherName" id="DispatcherName" class="form-control" readonly>
                                     </div>
                                     <div class="col-md-12 mb-2">
                                         <label class="form-label fw-normal">Телефон диспетчера</label>
                                         <input name="DispatcherPhone" id="DispatcherPhone" class="form-control" readonly>
                                     </div>
 
+                                    <!-- Поиск и выбор водителя (объединенное поле) -->
                                     <div class="col-md-12 mb-2">
-                                        <label class="form-label fw-normal">ФИО водителя</label>
-                                        <select name="DriverName" id="DriverName" class="form-select">
-                                            <option value="">— Выберите водителя —</option>
-                                            @if (ViewBag.Drivers != null)
-                                            {
-                                                foreach (var d in ViewBag.Drivers)
-                                                {
-                                                    <option value="@d.FullName" data-phone="@d.Phone">@d.FullName</option>
-                                                }
-                                            }
-                                        </select>
+                                        <label class="form-label fw-normal">ФИО водителя (поиск по табельному номеру или ФИО)</label>
+                                        <input type="text" id="DriverSearchInput" class="form-control"
+                                               placeholder="Введите табельный номер или ФИО водителя..."
+                                               autocomplete="off">
+                                        <div id="DriverSearchResults" class="list-group mt-1" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+                                        <input type="hidden" name="DriverId" id="DriverId" value="">
+                                        <input type="hidden" name="DriverName" id="DriverName">
+                                        <input type="hidden" name="DriverPhone" id="DriverPhone">
                                     </div>
+
+                                    <!-- Отображаем выбранного водителя -->
+                                    <div class="col-md-12 mb-2" id="SelectedDriverInfo" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <strong>Выбран водитель:</strong> <span id="SelectedDriverName"></span><br>
+                                            <strong>Телефон:</strong> <span id="SelectedDriverPhone"></span>
+                                            <button type="button" class="btn btn-sm btn-link" onclick="clearSelectedDriver()">Очистить</button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Транспорт -->
                                     <div class="col-md-12 mb-2">
-                                        <label class="form-label fw-normal">Телефон водителя</label>
-                                        <input name="DriverPhone" id="DriverPhone" class="form-control" readonly>
+                                        <label class="form-label fw-normal">Транспортное средство</label>
+                                        <input type="text" id="VehicleSearchInput" class="form-control"
+                                               placeholder="Введите госномер или марку..."
+                                               autocomplete="off">
+                                        <div id="VehicleSearchResults" class="list-group mt-1" style="max-height: 200px; overflow-y: auto; display: none;"></div>
+                                        <input type="hidden" name="VehicleId" id="VehicleId" value="">
+                                        <input type="hidden" name="VehicleBrand" id="VehicleBrand">
+                                        <input type="hidden" name="VehicleNumber" id="VehicleNumber">
+                                        <input type="hidden" name="VehicleColor" id="VehicleColor">
                                     </div>
-                                    <div class="col-md-4 mb-2">
-                                        <label class="form-label fw-normal">Марка ТС</label>
-                                        <input name="VehicleBrand" class="form-control">
+
+                                    <div class="col-md-12 mb-2" id="SelectedVehicleInfo" style="display: none;">
+                                        <div class="alert alert-info">
+                                            <strong>Выбрано ТС:</strong> <span id="SelectedVehicleInfoText"></span>
+                                            <button type="button" class="btn btn-sm btn-link" onclick="clearSelectedVehicle()">Очистить</button>
+                                        </div>
                                     </div>
-                                    <div class="col-md-4 mb-2">
-                                        <label class="form-label fw-normal">Гос. номер</label>
-                                        <input name="VehicleNumber" class="form-control">
-                                    </div>
-                                    <div class="col-md-4 mb-2">
-                                        <label class="form-label fw-normal">Цвет ТС</label>
-                                        <input name="VehicleColor" class="form-control">
-                                    </div>
+
                                     <div class="col-12 mb-2">
                                         <label class="form-label fw-normal">Примечание диспетчера</label>
                                         <textarea name="DispatcherNotes" class="form-control" rows="2"></textarea>
@@ -158,24 +162,258 @@
         </div>
     </div>
     <script>
-        // Автозаполнение телефона при выборе диспетчера
-        var dispatcherSelect = document.getElementById('DispatcherName');
-        if (dispatcherSelect) {
-            dispatcherSelect.addEventListener('change', function() {
-                var selected = this.options[this.selectedIndex];
-                var phone = selected.getAttribute('data-phone') || '';
-                document.getElementById('DispatcherPhone').value = phone;
-            });
+
+            // Поиск водителей с автозаполнением
+            var driverSearchTimeout;
+        var selectedDriver = null;
+
+        $('#DriverSearchInput').on('input', function () {
+            clearTimeout(driverSearchTimeout);
+            var query = $(this).val();
+
+            if (query.length < 2) {
+                $('#DriverSearchResults').hide().empty();
+                return;
+            }
+
+            driverSearchTimeout = setTimeout(function () {
+                $.ajax({
+                    url: '/api/DriversApi/search',
+                    type: 'GET',
+                    data: { query: query },
+                    success: function (response) {
+                        var resultsDiv = $('#DriverSearchResults');
+                        resultsDiv.empty();
+
+                        // Проверяем, что response - массив
+                        var drivers = Array.isArray(response) ? response : [];
+
+                        if (drivers.length === 0) {
+                            resultsDiv.hide();
+                            return;
+                        }
+
+                        drivers.forEach(function (driver) {
+                            resultsDiv.append(`
+                                    <a href="#" class="list-group-item list-group-item-action driver-result"
+                                       data-id="${driver.id || ''}"
+                                       data-name="${driver.fullName || ''}"
+                                       data-phone="${driver.phone || '-'}">
+                                        <strong>${driver.personnelNumber || ''}</strong> - ${driver.fullName || ''}
+                                        <small class="text-muted d-block">${driver.phone || 'нет телефона'}</small>
+                                    </a>
+                                `);
+                        });
+
+                        resultsDiv.show();
+
+                        $('.driver-result').off('click').on('click', function (e) {
+                            e.preventDefault();
+                            selectDriver($(this));
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Ошибка API водителей:', error);
+                        $('#DriverSearchResults').hide().empty();
+                    }
+                });
+            }, 300);
+        });
+
+        // Поиск транспорта
+        var vehicleSearchTimeout;
+        var selectedVehicle = null;
+
+        $('#VehicleSearchInput').on('input', function () {
+            clearTimeout(vehicleSearchTimeout);
+            var query = $(this).val();
+
+            if (query.length < 2) {
+                $('#VehicleSearchResults').hide().empty();
+                return;
+            }
+
+            vehicleSearchTimeout = setTimeout(function () {
+                $.ajax({
+                    url: '/api/DriversApi/vehicles/search',
+                    type: 'GET',
+                    data: { query: query },
+                    success: function (response) {
+                        var resultsDiv = $('#VehicleSearchResults');
+                        resultsDiv.empty();
+
+                        // Проверяем, что response - массив
+                        var vehicles = Array.isArray(response) ? response : [];
+
+                        if (vehicles.length === 0) {
+                            resultsDiv.hide();
+                            return;
+                        }
+
+                        vehicles.forEach(function (vehicle) {
+                            resultsDiv.append(`
+                                    <a href="#" class="list-group-item list-group-item-action vehicle-result"
+                                       data-id="${vehicle.id || ''}"
+                                       data-brand="${vehicle.brand || ''}"
+                                       data-model="${vehicle.model || ''}"
+                                       data-plate="${vehicle.plateNumber || ''}"
+                                       data-color="${vehicle.color || '-'}">
+                                        <strong>${vehicle.plateNumber || ''}</strong> - ${vehicle.brand || ''} ${vehicle.model || ''}
+                                        <small class="text-muted d-block">Цвет: ${vehicle.color || '-'} | Мест: ${vehicle.seatsCount || '-'}</small>
+                                    </a>
+                                `);
+                        });
+
+                        resultsDiv.show();
+
+                        $('.vehicle-result').off('click').on('click', function (e) {
+                            e.preventDefault();
+                            selectVehicle($(this));
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Ошибка API транспорта:', error);
+                        $('#VehicleSearchResults').hide().empty();
+                    }
+                });
+            }, 300);
+        });
+
+        // Остальные функции остаются без изменений...
+
+        function selectDriver(element) {
+            var id = element.data('id');
+            var name = element.data('name');
+            var phone = element.data('phone');
+
+            selectedDriver = { id: id, name: name, phone: phone };
+
+            $('#DriverId').val(id);
+            $('#DriverName').val(name);
+            $('#DriverPhone').val(phone);
+            $('#DriverSearchInput').val(name);
+            $('#SelectedDriverName').text(name);
+            $('#SelectedDriverPhone').text(phone);
+            $('#SelectedDriverInfo').show();
+            $('#DriverSearchResults').hide();
         }
 
-        // Автозаполнение телефона при выборе водителя
-        var driverSelect = document.getElementById('DriverName');
-        if (driverSelect) {
-            driverSelect.addEventListener('change', function() {
-                var selected = this.options[this.selectedIndex];
-                var phone = selected.getAttribute('data-phone') || '';
-                document.getElementById('DriverPhone').value = phone;
-            });
+        function clearSelectedDriver() {
+            selectedDriver = null;
+            $('#DriverId').val('');
+            $('#DriverName').val('');
+            $('#DriverPhone').val('');
+            $('#DriverSearchInput').val('');
+            $('#SelectedDriverInfo').hide();
+        }
+
+        function selectVehicle(element) {
+            var id = element.data('id');
+            var brand = element.data('brand');
+            var model = element.data('model');
+            var plate = element.data('plate');
+            var color = element.data('color');
+
+            selectedVehicle = { id: id, brand: brand, model: model, plate: plate, color: color };
+
+            $('#VehicleId').val(id);
+            $('#VehicleBrand').val(brand);
+            $('#VehicleNumber').val(plate);
+            $('#VehicleColor').val(color);
+            $('#VehicleSearchInput').val(plate + ' - ' + brand + ' ' + model);
+            $('#SelectedVehicleInfoText').text(plate + ' - ' + brand + ' ' + model + ' (' + color + ')');
+            $('#SelectedVehicleInfo').show();
+            $('#VehicleSearchResults').hide();
+        }
+
+        function clearSelectedVehicle() {
+            selectedVehicle = null;
+            $('#VehicleId').val('');
+            $('#VehicleBrand').val('');
+            $('#VehicleNumber').val('');
+            $('#VehicleColor').val('');
+            $('#VehicleSearchInput').val('');
+            $('#SelectedVehicleInfo').hide();
+        }
+
+        // При загрузке данных для редактирования
+        function loadApplication(id) {
+            fetch('/Applications/Edit/' + id)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Загружена заявка:', data);
+
+                    // Заполняем основные поля
+                    $('#createModal input[name="ApplicationDate"]').val(data.applicationDate?.split('T')[0] || '');
+                    $('#createModal input[name="TripStart"]').val(data.tripStart ? data.tripStart.replace('Z', '').slice(0, 16) : '');
+                    $('#createModal input[name="TripEnd"]').val(data.tripEnd ? data.tripEnd.replace('Z', '').slice(0, 16) : '');
+                    $('#createModal input[name="OrganizationUnit"]').val(data.organizationUnit || '');
+                    $('#createModal input[name="Purpose"]').val(data.purpose || '');
+                    $('#createModal input[name="Passengers"]').val(data.passengers || 1);
+                    $('#createModal input[name="Route"]').val(data.route || '');
+                    $('#createModal textarea[name="Notes"]').val(data.notes || '');
+
+                    // Если есть выбранный водитель
+                    if (data.driverName) {
+                        selectedDriver = {
+                            id: data.driverId,
+                            name: data.driverName,
+                            phone: data.driverPhone
+                        };
+                        $('#DriverId').val(data.driverId || '');
+                        $('#DriverName').val(data.driverName);
+                        $('#DriverPhone').val(data.driverPhone || '-');
+                        $('#DriverSearchInput').val(data.driverName);
+                        $('#SelectedDriverName').text(data.driverName);
+                        $('#SelectedDriverPhone').text(data.driverPhone || '-');
+                        $('#SelectedDriverInfo').show();
+                    } else {
+                        $('#SelectedDriverInfo').hide();
+                    }
+
+                    // Если есть выбранное ТС
+                    if (data.vehicleBrand) {
+                        selectedVehicle = {
+                            id: data.vehicleId,
+                            brand: data.vehicleBrand,
+                            plate: data.vehicleNumber,
+                            color: data.vehicleColor
+                        };
+                        $('#VehicleId').val(data.vehicleId || '');
+                        $('#VehicleBrand').val(data.vehicleBrand);
+                        $('#VehicleNumber').val(data.vehicleNumber || '');
+                        $('#VehicleColor').val(data.vehicleColor || '');
+                        $('#VehicleSearchInput').val(data.vehicleNumber + ' - ' + data.vehicleBrand);
+                        $('#SelectedVehicleInfoText').text(data.vehicleNumber + ' - ' + data.vehicleBrand + ' (' + (data.vehicleColor || '-') + ')');
+                        $('#SelectedVehicleInfo').show();
+                    } else {
+                        $('#SelectedVehicleInfo').hide();
+                    }
+
+                    $('#createModal textarea[name="DispatcherNotes"]').val(data.dispatcherNotes || '');
+
+                    // Настройка формы
+                    var form = $('#createModal form');
+                    form.attr('action', '/Applications/Edit/' + id);
+
+                    if (!$('#createModal input[name="Id"]').length) {
+                        form.append('<input type="hidden" name="Id" />');
+                    }
+                    $('#createModal input[name="Id"]').val(id);
+                    $('#createModal input[name="Number"]').val(data.number || '');
+
+                    $('#createModal .modal-title').text('Редактирование заявки №' + (data.number || id));
+                    new bootstrap.Modal(document.getElementById('createModal')).show();
+                })
+                .catch(error => {
+                    console.error('Ошибка загрузки заявки:', error);
+                    alert('Не удалось загрузить данные заявки: ' + error.message);
+                });
         }
     </script>
 </div>

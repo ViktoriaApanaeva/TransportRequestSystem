@@ -1,5 +1,6 @@
 ﻿@{
     Layout = null;
+    var returnUrl = ViewBag.ReturnUrl as string;
 }
 
 <!DOCTYPE html>
@@ -84,6 +85,11 @@
 
         <form method="post">
             @Html.AntiForgeryToken()
+            
+            @if (!string.IsNullOrEmpty(returnUrl))
+            {
+                <input type="hidden" name="returnUrl" value="@returnUrl" />
+            }
 
             <input type="text" name="username" class="form-control" placeholder="Логин" required autofocus>
             <input type="password" name="password" class="form-control" placeholder="Пароль" required>
@@ -92,7 +98,6 @@
                 <i class="bi bi-box-arrow-in-right"></i> Войти
             </button>
         </form>
-
     </div>
 </body>
 </html>

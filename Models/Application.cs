@@ -1,34 +1,27 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Reflection;
 
 namespace TransportRequestSystem.Models
 {
     public class Application
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public int Id { get; set; }
 
         [Display(Name = "Номер заявки")]
+        [StringLength(50)]
         public string Number { get; set; } = string.Empty;
 
         [Required]
         [Display(Name = "Статус")]
         public ApplicationStatus Status { get; set; } = ApplicationStatus.CreatedOrModified;
 
-        // Дата (раздел фильтров)
         [Required]
-        [Display(Name = "Дата")]
+        [Display(Name = "Дата заявки")]
         [DataType(DataType.Date)]
-        public DateTime ApplicationDate { get; set; } = DateTime.UtcNow;
+        public DateTime ApplicationDate { get; set; } = DateTime.Today;
 
-        [Display(Name = "Начало поездки")]
-        public DateTime? TripStart { get; set; }
-
-        [Display(Name = "Окончание поездки")]
-        public DateTime? TripEnd { get; set; }
-
+        // Раздел заказчика
         [Required]
         [Display(Name = "Организационная единица")]
         [StringLength(100)]
@@ -41,6 +34,7 @@ namespace TransportRequestSystem.Models
 
         [Required]
         [Display(Name = "Телефон")]
+        [Phone]
         [StringLength(20)]
         public string Phone { get; set; } = string.Empty;
 
@@ -49,9 +43,10 @@ namespace TransportRequestSystem.Models
         [StringLength(200)]
         public string Purpose { get; set; } = string.Empty;
 
-        [Display(Name = "Кол-во пассажиров")]
-        [StringLength(20)]
-        public string? Passengers { get; set; } 
+        [Required]
+        [Display(Name = "Количество пассажиров")]
+        [Range(1, 50)]
+        public int Passengers { get; set; } = 1;
 
         [Required]
         [Display(Name = "Маршрут")]
@@ -60,12 +55,12 @@ namespace TransportRequestSystem.Models
 
         [Display(Name = "Примечание")]
         [StringLength(1000)]
-        public string? Notes { get; set; }
+        public string? Notes { get; set; } = string.Empty;
 
-        // Поля диспетчера
+        // Раздел диспетчера (заполняется автоматически из авторизованного диспетчера)
         [Display(Name = "ФИО диспетчера")]
         [StringLength(100)]
-        public string? DispatcherName { get; set; } 
+        public string? DispatcherName { get; set; }
 
         [Display(Name = "Телефон диспетчера")]
         [Phone]
@@ -97,60 +92,50 @@ namespace TransportRequestSystem.Models
         [StringLength(1000)]
         public string? DispatcherNotes { get; set; }
 
+        [Display(Name = "Дата начала поездки")]
+        public DateTime? TripStart { get; set; }
+
+        [Display(Name = "Дата окончания поездки")]
+        public DateTime? TripEnd { get; set; }
+
+        // Внешние ключи
+        [Column(TypeName = "integer")]
+        public int? CreatedByUserId { get; set; }
+
+        [ForeignKey("CreatedByUserId")]
+        public virtual User? CreatedByUser { get; set; }
+
+        [Column(TypeName = "integer")]
+        public int? DispatcherUserId { get; set; }
+
+        [ForeignKey("DispatcherUserId")]
+        public virtual User? DispatcherUser { get; set; }
+
+        public int? DriverId { get; set; }
+
+        [ForeignKey("DriverId")]
+        public virtual Driver? Driver { get; set; }
+
+        public int? VehicleId { get; set; }
+
+        [ForeignKey("VehicleId")]
+        public virtual Vehicle? Vehicle { get; set; }
+
         // Системные поля
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
-        public List<StatusHistory> StatusHistory { get; set; } = new();
 
+        // Навигационные свойства
+        public virtual ICollection<StatusHistory> StatusHistories { get; set; } = new List<StatusHistory>();
+
+
+        // Генератор номера заявки
         public static string GenerateNumber()
         {
-            return $"{DateTime.Now:yyyyMMdd}-{new Random().Next(1000, 9999)}";
+            return $"Z-{DateTime.Now:yyyyMMdd}-{new Random().Next(1000, 9999)}";
         }
     }
 
-    public class Dispatcher
-    {
-        public int Id { get; set; }
-        public string FullName { get; set; } = string.Empty;
-        public string Phone { get; set; } = string.Empty;
-    }
-
-    public class Driver
-    {
-        public int Id { get; set; }
-        public string FullName { get; set; } = string.Empty;
-        public string Phone { get; set; } = string.Empty;
-    }
-
-    public enum ApplicationStatus
-    {
-        [Display(Name = "Удалена")]
-        Deleted,
-
-        [Display(Name = "Отклонена руководителем")]
-        RejectedByDirector,
-
-        [Display(Name = "Отклонена диспетчером")]
-        RejectedByDispatcher,
-
-        [Display(Name = "Назначено ТС")]
-        AssignedToVehicle,
-
-        [Display(Name = "Создана/Изменена")]
-        CreatedOrModified,
-
-        [Display(Name = "Не исполнена")]
-        NotCompleted,
-
-        [Display(Name = "Исполнена")]
-        Completed,
-
-        [Display(Name = "Исполняется")]
-        InProgress,
-
-        [Display(Name = "Утверждена")]
-        Approved
-    }
 
     public class ApplicationFilter
     {
@@ -166,13 +151,36 @@ namespace TransportRequestSystem.Models
         public string? OrganizationUnit { get; set; }
 
         [Display(Name = "Статусы")]
-        public List<ApplicationStatus> SelectedStatuses { get; set; } = new List<ApplicationStatus>();
-
-
-        // Флаги для действий
-        public bool Reset { get; set; }
-        public bool SelectAll { get; set; }
+        public List<ApplicationStatus> SelectedStatuses { get; set; } = new();
     }
 
+    public enum ApplicationStatus
+    {
+        [Display(Name = "Создана")]
+        CreatedOrModified,
 
+        [Display(Name = "Утверждена")]
+        Approved,
+
+        [Display(Name = "Назначено ТС")]
+        AssignedToVehicle,
+
+        [Display(Name = "Исполняется")]
+        InProgress,
+
+        [Display(Name = "Исполнена")]
+        Completed,
+
+        [Display(Name = "Не исполнена")]
+        NotCompleted,
+
+        [Display(Name = "Отклонена диспетчером")]
+        RejectedByDispatcher,
+
+        [Display(Name = "Отклонена руководителем")]
+        RejectedByDirector,
+
+        [Display(Name = "Удалена")]
+        Deleted
+    }
 }

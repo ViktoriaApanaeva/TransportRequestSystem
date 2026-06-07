@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TransportRequestSystem.Data;
 using TransportRequestSystem.Models;
+using System.Security.Claims;
 
 namespace TransportRequestSystem.Controllers
 {
@@ -21,6 +22,15 @@ namespace TransportRequestSystem.Controllers
             return User.IsInRole("Dispatcher");
         }
 
+        private async Task<User?> GetCurrentUserAsync()
+        {
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier);
+            if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
+                return null;
+
+            return await _context.Users.FindAsync(userId);
+        }
+
         // Главная страница с фильтрами
         public async Task<IActionResult> Index(DateTime? DateFrom, DateTime? DateTo, string OrganizationUnit, List<ApplicationStatus> SelectedStatuses,
                                        bool reset = false, bool selectAll = false)
@@ -33,13 +43,15 @@ namespace TransportRequestSystem.Controllers
             {
                 SelectedStatuses = Enum.GetValues<ApplicationStatus>().Cast<ApplicationStatus>().ToList();
             }
-            ;
 
             var query = _context.Applications
-                .Include(a => a.StatusHistory)
+                .Include(a => a.StatusHistories)
+                .Include(a => a.Driver)
+                .Include(a => a.Vehicle)
+                .Include(a => a.CreatedByUser)
+                .Include(a => a.DispatcherUser)
                 .AsQueryable();
 
-            // Применяем фильтры с преобразованием в UTC
             if (DateFrom.HasValue)
             {
                 var dateFromUtc = DateTime.SpecifyKind(DateFrom.Value.Date, DateTimeKind.Utc);
@@ -69,9 +81,11 @@ namespace TransportRequestSystem.Controllers
                 OrganizationUnit = OrganizationUnit,
                 SelectedStatuses = SelectedStatuses ?? new List<ApplicationStatus>()
             };
+
             ViewBag.Filter = filter;
-            ViewBag.Dispatchers = await _context.Dispatchers.ToListAsync();
-            ViewBag.Drivers = await _context.Drivers.ToListAsync();
+            ViewBag.Drivers = await _context.Drivers.Where(d => d.IsActive).ToListAsync();
+            ViewBag.Vehicles = await _context.Vehicles.Where(v => v.IsActive).ToListAsync();
+
             return View(applications);
         }
 
@@ -94,10 +108,23 @@ namespace TransportRequestSystem.Controllers
         {
             try
             {
+                // Получаем текущего пользователя
+                var currentUser = await GetCurrentUserAsync();
+                if (currentUser == null)
+                {
+                    TempData["Error"] = "Пользователь не авторизован";
+                    return RedirectToAction(nameof(Index));
+                }
+
                 application.Id = 0;
                 application.Number = Application.GenerateNumber();
                 application.CreatedAt = DateTime.UtcNow;
                 application.ApplicationDate = DateTime.SpecifyKind(application.ApplicationDate, DateTimeKind.Utc);
+
+                // Автоматически заполняем ФИО и телефон ответственного из профиля пользователя
+                application.ResponsiblePerson = currentUser.FullName ?? currentUser.Username;
+                application.Phone = currentUser.Phone ?? "-";
+                application.CreatedByUserId = currentUser.Id;
 
                 if (application.TripStart.HasValue)
                     application.TripStart = DateTime.SpecifyKind(application.TripStart.Value, DateTimeKind.Utc);
@@ -111,15 +138,23 @@ namespace TransportRequestSystem.Controllers
                     _ => ApplicationStatus.CreatedOrModified
                 };
 
+                // Если диспетчер утверждает/отклоняет, заполняем его данные
+                if (IsDispatcher() && (actionType == "approve" || actionType == "reject"))
+                {
+                    application.DispatcherName = currentUser.FullName ?? currentUser.Username;
+                    application.DispatcherPhone = currentUser.Phone ?? "-";
+                    application.DispatcherUserId = currentUser.Id;
+                }
+
                 _context.Applications.Add(application);
                 await _context.SaveChangesAsync();
 
-                // Запись в историю статусов
+                // Запись в историю
                 var history = new StatusHistory
                 {
                     ApplicationId = application.Id,
                     NewStatus = application.Status.ToString(),
-                    ChangedBy = User.Identity.Name ?? "System",
+                    ChangedBy = currentUser.FullName ?? currentUser.Username,
                     ChangedDate = DateTime.UtcNow
                 };
                 _context.StatusHistory.Add(history);
@@ -139,21 +174,38 @@ namespace TransportRequestSystem.Controllers
         [HttpGet]
         public async Task<IActionResult> Edit(int id)
         {
-            var application = await _context.Applications.FindAsync(id);
+            var application = await _context.Applications
+                .FirstOrDefaultAsync(a => a.Id == id);
+
             if (application == null)
                 return NotFound();
 
-            // Преобразуем даты в UTC для корректной передачи в JSON
-            if (application.TripStart.HasValue)
-                application.TripStart = DateTime.SpecifyKind(application.TripStart.Value, DateTimeKind.Utc);
-            if (application.TripEnd.HasValue)
-                application.TripEnd = DateTime.SpecifyKind(application.TripEnd.Value, DateTimeKind.Utc);
-            if (application.CreatedAt != DateTime.MinValue)
-                application.CreatedAt = DateTime.SpecifyKind(application.CreatedAt, DateTimeKind.Utc);
-            if (application.ApplicationDate != DateTime.MinValue)
-                application.ApplicationDate = DateTime.SpecifyKind(application.ApplicationDate, DateTimeKind.Utc);
+            var result = new
+            {
+                id = application.Id,
+                number = application.Number,
+                status = (int)application.Status,
+                applicationDate = application.ApplicationDate,
+                tripStart = application.TripStart,
+                tripEnd = application.TripEnd,
+                organizationUnit = application.OrganizationUnit,
+                responsiblePerson = application.ResponsiblePerson,
+                phone = application.Phone,
+                purpose = application.Purpose,
+                passengers = application.Passengers,
+                route = application.Route,
+                notes = application.Notes ?? "",
+                dispatcherName = application.DispatcherName,
+                dispatcherPhone = application.DispatcherPhone,
+                driverName = application.DriverName,
+                driverPhone = application.DriverPhone,
+                vehicleBrand = application.VehicleBrand,
+                vehicleNumber = application.VehicleNumber,
+                vehicleColor = application.VehicleColor,
+                dispatcherNotes = application.DispatcherNotes ?? ""
+            };
 
-            return Json(application);
+            return Json(result);
         }
 
         // Сохранение изменений заявки (POST)
@@ -171,8 +223,9 @@ namespace TransportRequestSystem.Controllers
                     return NotFound();
 
                 var oldStatus = existingApp.Status;
+                var currentUser = await GetCurrentUserAsync();
 
-                // Обновляем поля с преобразованием дат в UTC
+                // Обновляем основные поля
                 existingApp.ApplicationDate = DateTime.SpecifyKind(application.ApplicationDate, DateTimeKind.Utc);
                 existingApp.TripStart = application.TripStart.HasValue
                     ? DateTime.SpecifyKind(application.TripStart.Value, DateTimeKind.Utc)
@@ -181,35 +234,69 @@ namespace TransportRequestSystem.Controllers
                     ? DateTime.SpecifyKind(application.TripEnd.Value, DateTimeKind.Utc)
                     : null;
                 existingApp.OrganizationUnit = application.OrganizationUnit;
-                existingApp.ResponsiblePerson = application.ResponsiblePerson;
-                existingApp.Phone = application.Phone;
                 existingApp.Purpose = application.Purpose;
-                existingApp.Passengers = application.Passengers ?? string.Empty;
+                existingApp.Passengers = application.Passengers;
                 existingApp.Route = application.Route;
                 existingApp.Notes = application.Notes ?? string.Empty;
 
-                if (IsDispatcher())
+                // Если пользователь - диспетчер
+                if (IsDispatcher() && currentUser != null)
                 {
-                    existingApp.DispatcherName = application.DispatcherName;
-                    existingApp.DispatcherPhone = application.DispatcherPhone;
-                    existingApp.DriverName = application.DriverName;
-                    existingApp.DriverPhone = application.DriverPhone;
-                    existingApp.VehicleBrand = application.VehicleBrand;
-                    existingApp.VehicleNumber = application.VehicleNumber;
-                    existingApp.VehicleColor = application.VehicleColor;
+                    // Автоматически заполняем ФИО и телефон диспетчера
+                    existingApp.DispatcherName = currentUser.FullName ?? currentUser.Username;
+                    existingApp.DispatcherPhone = currentUser.Phone ?? "-";
+                    existingApp.DispatcherUserId = currentUser.Id;
+
+                    // Сохраняем примечание диспетчера
                     existingApp.DispatcherNotes = application.DispatcherNotes;
-                }
 
-                existingApp.UpdatedAt = DateTime.UtcNow;
-
-                // Обновляем статус если нужно
-                if (IsDispatcher())
-                {
+                    // Обновляем статус если нужно
                     if (actionType == "approve")
                         existingApp.Status = ApplicationStatus.Approved;
                     else if (actionType == "reject")
                         existingApp.Status = ApplicationStatus.RejectedByDispatcher;
                 }
+
+                // Обновляем информацию о водителе (если выбран)
+                if (application.DriverId.HasValue && application.DriverId > 0)
+                {
+                    var driver = await _context.Drivers.FindAsync(application.DriverId.Value);
+                    if (driver != null)
+                    {
+                        existingApp.DriverId = driver.Id;
+                        existingApp.DriverName = driver.FullName;
+                        existingApp.DriverPhone = driver.Phone ?? "-";
+                    }
+                }
+                else if (!string.IsNullOrEmpty(application.DriverName))
+                {
+                    // Если ввели вручную ФИО водителя
+                    existingApp.DriverId = null;
+                    existingApp.DriverName = application.DriverName;
+                    existingApp.DriverPhone = application.DriverPhone ?? "-";
+                }
+
+                // Обновляем информацию о ТС
+                if (application.VehicleId.HasValue && application.VehicleId > 0)
+                {
+                    var vehicle = await _context.Vehicles.FindAsync(application.VehicleId.Value);
+                    if (vehicle != null)
+                    {
+                        existingApp.VehicleId = vehicle.Id;
+                        existingApp.VehicleBrand = vehicle.Brand;
+                        existingApp.VehicleNumber = vehicle.PlateNumber;
+                        existingApp.VehicleColor = vehicle.Color;
+                    }
+                }
+                else if (!string.IsNullOrEmpty(application.VehicleBrand))
+                {
+                    existingApp.VehicleId = null;
+                    existingApp.VehicleBrand = application.VehicleBrand;
+                    existingApp.VehicleNumber = application.VehicleNumber;
+                    existingApp.VehicleColor = application.VehicleColor;
+                }
+
+                existingApp.UpdatedAt = DateTime.UtcNow;
 
                 // Если статус изменился, добавляем запись в историю
                 if (oldStatus != existingApp.Status)
@@ -219,7 +306,7 @@ namespace TransportRequestSystem.Controllers
                         ApplicationId = existingApp.Id,
                         OldStatus = oldStatus.ToString(),
                         NewStatus = existingApp.Status.ToString(),
-                        ChangedBy = User.Identity.Name ?? "System",
+                        ChangedBy = currentUser?.FullName ?? currentUser?.Username ?? "System",
                         ChangedDate = DateTime.UtcNow
                     };
                     _context.StatusHistory.Add(history);

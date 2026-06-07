@@ -1,0 +1,72 @@
+﻿@model TransportRequestSystem.Models.User
+@{
+    ViewData["Title"] = "Создание пользователя";
+}
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"]</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/navbar.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/modal.css" asp-append-version="true" />
+</head>
+<body>
+    @await Html.PartialAsync("_Navbar")
+
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Создание пользователя</h3>
+                    </div>
+                    <div class="card-body">
+                        <form method="post">
+                            @Html.AntiForgeryToken()
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Логин</label>
+                                <input name="Username" class="form-control" required />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">ФИО</label>
+                                <input name="FullName" class="form-control" required />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Телефон</label>
+                                <input name="Phone" class="form-control" />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Пароль</label>
+                                <input name="password" type="password" class="form-control" required />
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Роль</label>
+                                <select name="Role" class="form-select">
+                                    <option value="User">Пользователь</option>
+                                    <option value="Dispatcher">Диспетчер</option>
+                                    <option value="Admin">Администратор</option>
+                                </select>
+                            </div>
+
+                            <div class="d-flex justify-content-between">
+                                <a href="@Url.Action("Index")" class="btn btn-secondary">Назад</a>
+                                <button type="submit" class="btn btn-base">Создать</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

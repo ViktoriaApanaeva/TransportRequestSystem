@@ -221,7 +221,34 @@
             });
         }
 
-               function loadApplication(id) {
+        // При открытии модального окна для новой заявки
+        document.getElementById('createModal').addEventListener('show.bs.modal', function (event) {
+            var button = event.relatedTarget;
+            // Если кнопка не содержит data-id (новая заявка)
+            if (button && !button.getAttribute('data-id')) {
+                // Сбрасываем форму
+                document.querySelector('#createModal form').reset();
+                document.querySelector('#createModal form').action = '/Applications/Create';
+                document.querySelector('#createModal input[name="Id"]').value = 0;
+                document.querySelector('#createModal .modal-title').textContent = 'СОЗДАНИЕ ЗАЯВКИ';
+
+                // Очищаем выбранных водителя и ТС
+                clearSelectedDriver();
+                clearSelectedVehicle();
+
+                // Устанавливаем дату сегодня
+                var today = new Date().toISOString().split('T')[0];
+                document.querySelector('input[name="ApplicationDate"]').value = today;
+            }
+        });
+
+        function loadApplication(id) {
+            console.log('Загрузка заявки ID:', id);
+
+            // Очищаем предыдущие данные перед загрузкой
+            clearSelectedDriver();
+            clearSelectedVehicle();
+
             fetch('/Applications/Edit/' + id)
                 .then(response => {
                     if (!response.ok) {
@@ -230,101 +257,100 @@
                     return response.json();
                 })
                 .then(data => {
-                    console.log('Данные из сервера:', data); 
+                    console.log('Загружена заявка:', data);
 
-                    const fieldMapping = {
-                        'id': 'Id',
-                        'number': 'Number',
-                        'applicationDate': 'ApplicationDate',
-                        'tripStart': 'TripStart',
-                        'tripEnd': 'TripEnd',
-                        'organizationUnit': 'OrganizationUnit',
-                        'responsiblePerson': 'ResponsiblePerson',
-                        'phone': 'Phone',
-                        'purpose': 'Purpose',
-                        'route': 'Route',
-                        'passengers': 'Passengers',
-                        'notes': 'Notes',
-                        'dispatcherName': 'DispatcherName',
-                        'dispatcherPhone': 'DispatcherPhone',
-                        'driverName': 'DriverName',
-                        'driverPhone': 'DriverPhone',
-                        'vehicleBrand': 'VehicleBrand',
-                        'vehicleNumber': 'VehicleNumber',
-                        'vehicleColor': 'VehicleColor',
-                        'dispatcherNotes': 'DispatcherNotes'
-                    };
-
-                    // Заполняем поля формы
-                    Object.keys(fieldMapping).forEach(jsonField => {
-                        const formFieldName = fieldMapping[jsonField];
-                        const input = document.querySelector(`#createModal [name="${formFieldName}"]`);
-                        if (input && data[jsonField]) {
-                            let value = data[jsonField];
-
-                            // Преобразуем даты
-                            if (jsonField === 'applicationDate' && value) {
-                                value = value.split('T')[0];
-                            }
-                            if ((jsonField === 'tripStart' || jsonField === 'tripEnd') && value) {
-                                value = value.replace('Z', '').slice(0, 16);
-                            }
-
-                            input.value = value;
-                        }
-                    });
-
-                    // Выбор диспетчера
-                    if (data.dispatcherName) {
-                        const dispatcherSelect = document.getElementById('DispatcherName');
-                        for (let i = 0; i < dispatcherSelect.options.length; i++) {
-                            if (dispatcherSelect.options[i].value === data.dispatcherName) {
-                                dispatcherSelect.selectedIndex = i;
-                                const event = new Event('change');
-                                dispatcherSelect.dispatchEvent(event);
-                                break;
-                            }
-                        }
+                    // Проверяем, что данные получены
+                    if (!data || !data.id) {
+                        throw new Error('Неверные данные от сервера');
                     }
 
-                    // Выбор водителя
-                    if (data.driverName) {
-                        const driverSelect = document.getElementById('DriverName');
-                        for (let i = 0; i < driverSelect.options.length; i++) {
-                            if (driverSelect.options[i].value === data.driverName) {
-                                driverSelect.selectedIndex = i;
-                                const event = new Event('change');
-                                driverSelect.dispatchEvent(event);
-                                break;
-                            }
-                        }
+                    // Заполняем основные поля
+                    $('#createModal input[name="Id"]').val(data.id);
+                    $('#createModal input[name="Number"]').val(data.number || '');
+
+                    if (data.applicationDate) {
+                        $('#createModal input[name="ApplicationDate"]').val(data.applicationDate.split('T')[0]);
                     }
 
-                    // Настройка формы
-                    const form = document.querySelector('#createModal form');
-                    form.action = '/Applications/Edit/' + id;
-
-                    let idInput = form.querySelector('input[name="Id"]');
-                    if (!idInput) {
-                        idInput = document.createElement('input');
-                        idInput.type = 'hidden';
-                        idInput.name = 'Id';
-                        form.appendChild(idInput);
-                    }
-                    idInput.value = id;
-
-                    const modalTitle = document.querySelector('#createModal .modal-title');
-                    if (modalTitle) {
-                        modalTitle.textContent = 'Редактирование заявки №' + data.number;
+                    if (data.tripStart) {
+                        $('#createModal input[name="TripStart"]').val(data.tripStart.replace('Z', '').slice(0, 16));
+                    } else {
+                        $('#createModal input[name="TripStart"]').val('');
                     }
 
-                    new bootstrap.Modal(document.getElementById('createModal')).show();
+                    if (data.tripEnd) {
+                        $('#createModal input[name="TripEnd"]').val(data.tripEnd.replace('Z', '').slice(0, 16));
+                    } else {
+                        $('#createModal input[name="TripEnd"]').val('');
+                    }
+
+                    $('#createModal input[name="OrganizationUnit"]').val(data.organizationUnit || '');
+                    $('#createModal input[name="ResponsiblePerson"]').val(data.responsiblePerson || '');
+                    $('#createModal input[name="Phone"]').val(data.phone || '');
+                    $('#createModal input[name="Purpose"]').val(data.purpose || '');
+                    $('#createModal input[name="Passengers"]').val(data.passengers || 1);
+                    $('#createModal textarea[name="Route"]').val(data.route || '');
+                    $('#createModal textarea[name="Notes"]').val(data.notes || '');
+
+                    // Поля диспетчера
+                    $('#createModal input[name="DispatcherName"]').val(data.dispatcherName || '');
+                    $('#createModal input[name="DispatcherPhone"]').val(data.dispatcherPhone || '');
+                    $('#createModal textarea[name="DispatcherNotes"]').val(data.dispatcherNotes || '');
+
+                    // Водитель
+                    if (data.driverName && data.driverName !== 'null') {
+                        selectedDriver = {
+                            id: data.driverId,
+                            name: data.driverName,
+                            phone: data.driverPhone
+                        };
+                        $('#DriverId').val(data.driverId || '');
+                        $('#DriverName').val(data.driverName);
+                        $('#DriverPhone').val(data.driverPhone || '-');
+                        $('#DriverSearchInput').val(data.driverName);
+                        $('#SelectedDriverName').text(data.driverName);
+                        $('#SelectedDriverPhone').text(data.driverPhone || '-');
+                        $('#SelectedDriverInfo').show();
+                    } else {
+                        $('#SelectedDriverInfo').hide();
+                    }
+
+                    // Транспорт
+                    if (data.vehicleBrand && data.vehicleBrand !== 'null') {
+                        selectedVehicle = {
+                            id: data.vehicleId,
+                            brand: data.vehicleBrand,
+                            plate: data.vehicleNumber,
+                            color: data.vehicleColor
+                        };
+                        $('#VehicleId').val(data.vehicleId || '');
+                        $('#VehicleBrand').val(data.vehicleBrand);
+                        $('#VehicleNumber').val(data.vehicleNumber || '');
+                        $('#VehicleColor').val(data.vehicleColor || '');
+                        $('#VehicleSearchInput').val(data.vehicleNumber + ' - ' + data.vehicleBrand);
+                        $('#SelectedVehicleInfoText').text(data.vehicleNumber + ' - ' + data.vehicleBrand + ' (' + (data.vehicleColor || '-') + ')');
+                        $('#SelectedVehicleInfo').show();
+                    } else {
+                        $('#SelectedVehicleInfo').hide();
+                    }
+
+                    // Настраиваем форму на редактирование
+                    var form = $('#createModal form');
+                    form.attr('action', '/Applications/Edit/' + id);
+
+                    // Меняем заголовок
+                    $('#createModal .modal-title').text('Редактирование заявки №' + (data.number || id));
+
+                    // Показываем модальное окно
+                    var modal = new bootstrap.Modal(document.getElementById('createModal'));
+                    modal.show();
                 })
                 .catch(error => {
-                    console.error('Ошибка:', error);
+                    console.error('Ошибка загрузки заявки:', error);
                     alert('Не удалось загрузить данные заявки: ' + error.message);
                 });
         }
+        
     </script>
 </body>
 </html>

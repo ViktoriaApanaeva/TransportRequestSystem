@@ -5,6 +5,12 @@
             <a href="/" class="nav-btn">Управление заявками</a>
             <a href="/analytics" class="nav-btn">Аналитика</a>
             <a href="/calendar" class="nav-btn">Календарь</a>
+            @if (User.IsInRole("Admin"))
+            {
+                <a href="/admin" class="nav-btn" style="width:30px">
+                    <i class="bi bi-people"></i> 
+                </a>
+            }
         </div>
 
         <!-- Правая часть - пользователь -->
